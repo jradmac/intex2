@@ -1,75 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import styled, { createGlobalStyle } from 'styled-components';
 import axios from 'axios';
+import bgImage from '../images/WelcomePageBanner.png';
+import logo from '../images/CineNicheLogo.png';
 
-// API URL - using HTTP for local development
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Registration steps enum
 enum RegisterStep {
   INITIAL = 'initial',
   PROFILE = 'profile'
 }
 
-// User data interface
-interface UserData {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  age?: number;
-  gender?: string;
-  phone?: string;
-  profileCompleted?: boolean;
-}
-
-// Password validation helper
-const isValidPassword = (password: string): boolean => {
-  return password.length >= 10;
-};
+const isValidPassword = (password: string): boolean => password.length >= 10;
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<RegisterStep>(RegisterStep.INITIAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Initial registration form state
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  
-  // Profile completion form state
+
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
-  
-  // Temporary user data storage
-  const [tempUserData, setTempUserData] = useState<UserData | null>(null);
+
+  const [tempUserData, setTempUserData] = useState<any>(null);
   const [tempToken, setTempToken] = useState<string | null>(null);
-  
-  // Check for saved registration data on mount
+
   useEffect(() => {
-    console.log('[DEBUG] RegisterPage useEffect: Checking session storage');
-    // Check if we should be in profile step with data from session storage
+
     const storedToken = sessionStorage.getItem('tempToken');
     const storedUserData = sessionStorage.getItem('tempUserData');
-    
-    console.log('[DEBUG] RegisterPage useEffect: Found in session storage', { storedToken, storedUserData });
-    
+
+
     if (storedToken && storedUserData) {
       try {
         const userData = JSON.parse(storedUserData);
-        console.log('RegisterPage: Found stored registration data, restoring state');
-        
         setTempToken(storedToken);
         setTempUserData(userData);
         setCurrentStep(RegisterStep.PROFILE);
       } catch (err) {
-        console.error('Error parsing stored user data:', err);
-        // Clear invalid data
         sessionStorage.removeItem('tempToken');
         sessionStorage.removeItem('tempUserData');
       }
@@ -79,131 +54,84 @@ const RegisterPage: React.FC = () => {
   const handleInitialRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    // Password validation
+
     if (!isValidPassword(password)) {
       setError('Password must be at least 10 characters long');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      console.log('[DEBUG] handleInitialRegister: Sending registration request');
+
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
         firstName,
-        lastName
+        lastName,
       });
-      
-      console.log('[DEBUG] handleInitialRegister: Registration API response', response.data);
-      
-      // For testing - create mock data if API doesn't return what we need
+
       const userId = response.data.userId || `user-${Date.now()}`;
       // Important: Use the token directly from the API response if provided
       const token = response.data.token || `mock-token-${Date.now()}`;
-      console.log('[DEBUG] handleInitialRegister: Got token from response:', { token });
-      
-      // Store token and basic user data temporarily
+
       const userData = {
-        userId: userId,
+        userId,
         email,
         firstName,
         lastName,
         role: response.data.role || 'User'
       };
-      
-      // Store data in state and localStorage as a backup
+
       setTempToken(token);
       setTempUserData(userData);
-      console.log('[DEBUG] handleInitialRegister: Set state', { token, userData });
-      
-      // Also store in session storage to prevent data loss on page refresh
+
       sessionStorage.setItem('tempToken', token);
       sessionStorage.setItem('tempUserData', JSON.stringify(userData));
-      
-      console.log('[DEBUG] handleInitialRegister: Saved temporary data to session storage', { token, userData });
-      
-      // Move to profile completion step
+
       setCurrentStep(RegisterStep.PROFILE);
     } catch (err: any) {
-      console.error('RegisterPage: Registration error', err);
       setError(err.response?.data?.message || 'Failed to register. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleProfileComplete = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
-    console.log('[DEBUG] handleProfileComplete: Starting profile completion');
-    
+              
     try {
-      // Try to get data from state first, then session storage as backup
       let userData = tempUserData;
       let token = tempToken;
-      
-      // If data is missing from state, try to get from session storage
+
       if (!userData || !token) {
-        console.log('[DEBUG] handleProfileComplete: Data missing from state, checking session storage');
+
         const storedToken = sessionStorage.getItem('tempToken');
         const storedUserData = sessionStorage.getItem('tempUserData');
-        
-        console.log('[DEBUG] handleProfileComplete: Retrieved from session storage', { storedToken, storedUserData });
-        
+
         if (storedToken && storedUserData) {
           token = storedToken;
           userData = JSON.parse(storedUserData);
-          console.log('[DEBUG] handleProfileComplete: Restored data from session storage', { token, userData });
         }
       }
-      
-      // If still no data, throw error
-      if (!userData || !token) {
-        console.error('[DEBUG] handleProfileComplete: Missing user data in both state and session storage');
-        throw new Error('Missing user data. Please try registering again.');
-      }
-      
-      console.log('[DEBUG] handleProfileComplete: Preparing to call /User/profile API with:', { userData, token, age, gender, phone });
-      
-      let profileUpdateSuccess = true;
-      try {
-        // Try to update user profile with additional data
-        const response = await fetch(`${API_BASE_URL}/User/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            age: parseInt(age),
-            gender,
-            phone
-          })
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.warn(`[DEBUG] handleProfileComplete: API profile update failed (response not ok). Status: ${response.status}, Text: ${errorText}`);
-          profileUpdateSuccess = false;
-        } else {
-          console.log('[DEBUG] handleProfileComplete: API profile update successful');
-          const responseData = await response.json();
-          console.log('[DEBUG] handleProfileComplete: API profile update response:', responseData);
-        }
-      } catch (apiError) {
-        console.warn('[DEBUG] handleProfileComplete: API profile update fetch error (continuing with local update)', apiError);
-        profileUpdateSuccess = false;
-      }
-      
-      // Even if API call fails, continue with local storage update
-      // This allows testing the UI flow without a working backend
-      
-      // Save complete user data to localStorage
+
+      if (!userData || !token) throw new Error('Missing user data. Please try registering again.');
+
+      await fetch(`${API_BASE_URL}/User/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          age: parseInt(age),
+          gender,
+          phone
+        })
+      });
+
       const completeUserData = {
         ...userData,
         age: parseInt(age),
@@ -211,294 +139,205 @@ const RegisterPage: React.FC = () => {
         phone,
         profileCompleted: true
       };
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('userData', JSON.stringify(completeUserData));
-      console.log('[DEBUG] handleProfileComplete: Saved final data to localStorage', { token, completeUserData });
-      
-      // Clean up session storage
+
       sessionStorage.removeItem('tempToken');
       sessionStorage.removeItem('tempUserData');
-      
-      console.log('RegisterPage: Registration complete, redirecting to home');
-      
-      if (!profileUpdateSuccess) {
-        console.log('Note: API profile update failed, but proceeding with local data');
-      }
-      
+
       navigate('/home');
     } catch (err) {
-      console.error('[DEBUG] handleProfileComplete: Error during profile completion process', err);
+
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleSkipProfile = () => {
-    // Try to get data from state first, then session storage as backup
-    let userData = tempUserData;
-    let token = tempToken;
-    
-    // If data is missing from state, try to get from session storage
-    if (!userData || !token) {
-      console.log('RegisterPage: Data missing from state, checking session storage');
-      const storedToken = sessionStorage.getItem('tempToken');
-      const storedUserData = sessionStorage.getItem('tempUserData');
-      
-      if (storedToken && storedUserData) {
-        token = storedToken;
-        userData = JSON.parse(storedUserData);
-        console.log('RegisterPage: Retrieved data from session storage', { token, userData });
-      }
-    }
-    
-    // If still no data, show error
-    if (!userData || !token) {
-      console.error('RegisterPage: Missing user data in both state and session storage');
-      setError('Missing user data. Please try registering again.');
-      return;
-    }
-    
-    // Save user data with default profile values
-    const completeUserData = {
-      ...userData,
-      age: 18,
-      gender: 'prefer-not-to-say',
-      phone: '',
-      profileCompleted: true
-    };
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('userData', JSON.stringify(completeUserData));
-    
-    // Clean up session storage
-    sessionStorage.removeItem('tempToken');
-    sessionStorage.removeItem('tempUserData');
-    
-    console.log('RegisterPage: Skipped profile completion with default values');
-    
-    // Redirect to home page
-    navigate('/home');
-  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Header */}
-      <header className="py-6 px-8 border-b border-gray-200">
-        <div className="text-gray-900 text-2xl font-bold">CineStream</div>
-      </header>
-      
-      {/* Main Content */}
-      <div className="flex-grow flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
+    <>
+      <GlobalStyle />
+      <BackgroundWrapper>
+        <Overlay />
+        <LogoWrapper onClick={() => navigate('/')}> <LogoImg src={logo} alt="CineNiche Logo" /> </LogoWrapper>
+        <FormWrapper onSubmit={currentStep === RegisterStep.INITIAL ? handleInitialRegister : handleProfileComplete}>
+          <Title>{currentStep === RegisterStep.INITIAL ? 'Create an Account' : 'Complete Your Profile'}</Title>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+
           {currentStep === RegisterStep.INITIAL ? (
             <>
-              <h1 className="text-2xl font-bold mb-8 text-center text-gray-900">Create an account</h1>
-              
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-                  {error}
-                </div>
-              )}
-              
-              <form onSubmit={handleInitialRegister} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="firstName">
-                      First Name
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-md 
-                                px-4 py-2 text-gray-900 placeholder-gray-500
-                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      id="firstName"
-                      type="text"
-                      placeholder="First Name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="lastName">
-                      Last Name
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-md 
-                                px-4 py-2 text-gray-900 placeholder-gray-500
-                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      id="lastName"
-                      type="text"
-                      placeholder="Last Name"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="email">
-                    Email
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-md 
-                              px-4 py-2 text-gray-900 placeholder-gray-500
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="email"
-                    type="email"
-                    placeholder="email@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="password">
-                    Password
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-md 
-                              px-4 py-2 text-gray-900 placeholder-gray-500
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="password"
-                    type="password"
-                    placeholder="At least 10 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Password must be at least 10 characters long
-                  </p>
-                </div>
-                
-                <div className="space-y-4 pt-2">
-                  <button
-                    className="w-full bg-blue-600 hover:bg-blue-700 transition 
-                              text-white font-medium py-2 px-4 rounded-md focus:outline-none
-                              focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                              disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? 'Creating Account...' : 'Continue'}
-                  </button>
-                  
-                  <div className="text-center">
-                    <Link to="/login" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      Already have an account? Sign in
-                    </Link>
-                  </div>
-                </div>
-              </form>
+              <Input type="text" placeholder="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+              <Input type="text" placeholder="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} required />
+              <Input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required />
+              <Input type="password" placeholder="Password (min. 10 characters)" value={password} onChange={e => setPassword(e.target.value)} required />
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold mb-2 text-center text-gray-900">Complete Your Profile</h1>
-              <p className="text-gray-500 text-center mb-8">Tell us more about yourself</p>
-              
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-                  {error}
-                </div>
-              )}
-              
-              <form onSubmit={handleProfileComplete} className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="age">
-                    Age
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-md 
-                              px-4 py-2 text-gray-900 placeholder-gray-500
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="age"
-                    type="number"
-                    placeholder="Your age"
-                    min="13"
-                    max="120"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="gender">
-                    Gender
-                  </label>
-                  <select
-                    className="w-full border border-gray-300 rounded-md 
-                              px-4 py-2 text-gray-900
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="gender"
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    required
-                  >
-                    <option value="" disabled>Select your gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="non-binary">Non-binary</option>
-                    <option value="prefer-not-to-say">Prefer not to say</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="phone">
-                    Phone Number <span className="text-gray-500">(Optional)</span>
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-md 
-                              px-4 py-2 text-gray-900 placeholder-gray-500
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="phone"
-                    type="tel"
-                    placeholder="Your phone number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex gap-3 pt-2">
-                  <button
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 transition 
-                              text-white font-medium py-2 px-4 rounded-md focus:outline-none
-                              focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                              disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? 'Saving...' : 'Complete Profile'}
-                  </button>
-                  
-                  <button
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md 
-                              hover:bg-gray-50 transition focus:outline-none 
-                              focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    type="button"
-                    onClick={handleSkipProfile}
-                    disabled={loading}
-                  >
-                    Skip
-                  </button>
-                </div>
-              </form>
+              <Input type="number" placeholder="Age" value={age} onChange={e => setAge(e.target.value)} required />
+              <Select value={gender} onChange={e => setGender(e.target.value)} required>
+                <option value="" disabled>Select your gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </Select>
+              <Input type="tel" placeholder="Phone Number (optional)" value={phone} onChange={e => setPhone(e.target.value)} />
             </>
           )}
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <footer className="py-4 text-center text-gray-500 text-sm border-t border-gray-200">
-        <p>© 2023 CineStream. All rights reserved.</p>
-      </footer>
-    </div>
+
+          <Button type="submit" disabled={loading}>{loading ? 'Processing...' : currentStep === RegisterStep.INITIAL ? 'Continue' : 'Complete Profile'}</Button>
+          {currentStep === RegisterStep.INITIAL && (
+            <Text>
+              Already have an account?
+              <LinkText onClick={() => navigate('/login')}> Sign in</LinkText>
+            </Text>
+          )}
+        </FormWrapper>
+      </BackgroundWrapper>
+    </>
   );
 };
 
 export default RegisterPage;
+
+const GlobalStyle = createGlobalStyle`
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+`;
+
+const BackgroundWrapper = styled.div`
+  background-image: url(${bgImage});
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const Overlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1;
+`;
+
+const LogoWrapper = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  z-index: 3;
+  cursor: pointer;
+
+  @media (max-width: 600px) {
+    top: 16px;
+    left: 16px;
+  }
+`;
+
+const LogoImg = styled.img`
+  width: 150px;
+  height: auto;
+
+  @media (max-width: 600px) {
+    width: 100px;
+  }
+`;
+
+const FormWrapper = styled.form`
+  position: relative;
+  z-index: 2;
+  background-color: #f3ede5;
+  padding: 60px 68px 40px;
+  max-width: 450px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+`;
+
+const Title = styled.h1`
+  color: #000;
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 28px;
+`;
+
+const Input = styled.input`
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  color: #000;
+  height: 50px;
+  padding: 5px 20px;
+  margin-bottom: 20px;
+`;
+
+const Select = styled.select`
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  color: #000;
+  height: 50px;
+  padding: 5px 20px;
+  margin-bottom: 20px;
+`;
+
+const Button = styled.button`
+  background: #63b3d3;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 16px;
+  border: 0;
+  color: white;
+  cursor: pointer;
+  margin-bottom: 12px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:hover {
+    background-color: #519abb;
+  }
+`;
+
+const Text = styled.p`
+  color: #8c8c8c;
+  font-size: 16px;
+  font-weight: 500;
+`;
+
+const LinkText = styled.span`
+  color: #63b3d3;
+  cursor: pointer;
+  margin-left: 5px;
+  text-decoration: underline;
+
+  &:hover {
+    color: #519abb;
+  }
+`;
+
+const ErrorMessage = styled.div`
+  background-color: #e50914;
+  color: white;
+  padding: 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+`;

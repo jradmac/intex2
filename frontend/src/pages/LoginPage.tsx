@@ -1,32 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import styled, { createGlobalStyle } from 'styled-components';
 import axios from 'axios';
+import bgImage from '../images/WelcomePageBanner.png'; // adjust path as needed
+import logo from '../images/CineNicheLogo.png';
 
-// API URL - using HTTP for local development
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Password validation helper
 const isValidPassword = (password: string): boolean => {
   return password.length >= 10;
 };
 
+// GLOBAL STYLES TO RESET SCROLL/GAPS
+const GlobalStyle = createGlobalStyle`
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+`;
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  // Login form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // Check for existing login on component mount
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('userData');
-    
-    // If already logged in, redirect to home
+
     if (token && userData) {
-      console.log('LoginPage: User already logged in, redirecting to home');
       navigate('/home');
     }
   }, [navigate]);
@@ -34,24 +46,22 @@ const LoginPage: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    // Simple validation
+
     if (!isValidPassword(password)) {
       setError('Password must be at least 10 characters long');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      console.log('LoginPage: Sending login request');
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
-        password
+        password,
       });
-      
-      // Save token and user data to localStorage
+
       localStorage.setItem('token', response.data.token);
+
       const userData = {
         userId: response.data.userId,
         email: response.data.email,
@@ -61,105 +71,202 @@ const LoginPage: React.FC = () => {
         age: response.data.age,
         gender: response.data.gender,
         phone: response.data.phone,
-        profileCompleted: true
+        profileCompleted: true,
       };
-      
+
       localStorage.setItem('userData', JSON.stringify(userData));
-      console.log('LoginPage: Login successful, saved user data');
-      
-      // Navigate to home page
       navigate('/home');
     } catch (err: any) {
-      console.error('LoginPage: Login error', err);
-      setError(err.response?.data?.message || 'Failed to login. Please check your credentials and try again.');
+      setError(
+        err.response?.data?.message ||
+        'Failed to login. Please check your credentials and try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Header */}
-      <header className="py-6 px-8 border-b border-gray-200">
-        <div className="text-gray-900 text-2xl font-bold">CineStream</div>
-      </header>
-      
-      {/* Login Form */}
-      <div className="flex-grow flex items-center justify-center px-4">
-        <div className="w-full max-w-md">
-          <h1 className="text-2xl font-bold mb-8 text-center text-gray-900">
-            Sign in to your account
-          </h1>
-          
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="email">
-                Email
-              </label>
-              <input
-                className="w-full border border-gray-300 rounded-md 
-                          px-4 py-2 text-gray-900 placeholder-gray-500
-                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="password">
-                Password
-              </label>
-              <input
-                className="w-full border border-gray-300 rounded-md 
-                          px-4 py-2 text-gray-900 placeholder-gray-500
-                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                id="password"
-                type="password"
-                placeholder="Enter your password (min. 10 characters)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-4">
-              <button
-                className="w-full bg-blue-600 hover:bg-blue-700 transition 
-                           text-white font-medium py-2 px-4 rounded-md focus:outline-none
-                           focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-              
-              <div className="text-center">
-                <Link to="/register" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                  Don't have an account? Create one
-                </Link>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <footer className="py-4 text-center text-gray-500 text-sm border-t border-gray-200">
-        <p>© 2023 CineStream. All rights reserved.</p>
-      </footer>
-    </div>
+    <>
+      <GlobalStyle />
+      <BackgroundWrapper>
+        <Overlay />
+        <LogoWrapper onClick={() => navigate('/')}>
+        <LogoImg src={logo} alt="CineNiche Logo" />
+        </LogoWrapper>
+        <FormWrapper onSubmit={handleLogin} method="POST">
+          <Title>Sign In</Title>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+          <Input
+            type="email"
+            placeholder="Email Address"
+            value={email}
+            onChange={({ target }) => setEmail(target.value)}
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Password (min. 10 characters)"
+            value={password}
+            onChange={({ target }) => setPassword(target.value)}
+            required
+          />
+          <Button disabled={loading} type="submit">
+            {loading ? 'Signing in...' : 'Sign In'}
+          </Button>
+          <Text>
+            New to CineNiche?{' '}
+            <LinkText onClick={() => navigate('/register')}>
+              Sign up now.
+            </LinkText>
+          </Text>
+          <CaptchaText>
+            This page is protected by Google reCAPTCHA to ensure you're not a bot.
+          </CaptchaText>
+        </FormWrapper>
+      </BackgroundWrapper>
+    </>
   );
 };
 
 export default LoginPage;
+
+/* --- Styled Components --- */
+
+const BackgroundWrapper = styled.div`
+  background-image: url(${bgImage});
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const Overlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1;
+`;
+
+const FormWrapper = styled.form`
+  position: relative;
+  z-index: 2;
+  background-color: #f3ede5;
+  padding: 60px 68px 40px;
+  max-width: 450px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+`;
+
+const Title = styled.h1`
+  color: #000;
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 28px;
+`;
+
+const Input = styled.input`
+  background: #333;
+  border-radius: 4px;
+  border: 0;
+  color: #fff;
+  height: 50px;
+  line-height: 50px;
+  padding: 5px 20px;
+  margin-bottom: 20px;
+`;
+
+const Button = styled.button`
+  background: #63b3d3; /* CineNiche blue */
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 16px;
+  border: 0;
+  color: white;
+  cursor: pointer;
+  margin-bottom: 12px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:hover {
+    background-color: #519abb; /* slightly darker blue on hover */
+  }
+`;
+
+
+const Text = styled.p`
+  color: #8c8c8c;
+  font-size: 16px;
+  font-weight: 500;
+`;
+
+const LinkText = styled.span`
+  color: #63b3d3;
+  cursor: pointer;
+  margin-left: 5px;
+  text-decoration: underline;
+
+  &:hover {
+    color: #519abb; /* optional darker hover tone */
+  }
+`;
+
+const CaptchaText = styled.p`
+  color: #8c8c8c;
+  font-size: 13px;
+  margin-top: 20px;
+`;
+
+const Warning = styled.div`
+  background-color: #e87c03;
+  color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  text-align: center;
+`;
+
+const ErrorMessage = styled.div`
+  background-color: #e50914;
+  color: white;
+  padding: 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+`;
+
+
+const LogoWrapper = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  z-index: 3;
+
+  @media (max-width: 600px) {
+    left: 16px;
+    top: 16px;
+  }
+
+  cursor: pointer;
+`;
+
+const LogoImg = styled.img`
+  width: 150px;
+  height: auto;
+
+  @media (max-width: 600px) {
+    width: 100px;
+  }
+`;
