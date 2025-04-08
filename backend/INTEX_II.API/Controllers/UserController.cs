@@ -121,75 +121,95 @@ namespace CineNiche.API.Controllers
         [Route("profile")]
         public async Task<IActionResult> UpdateUserProfile([FromBody] UpdateProfileRequest request)
         {
-            // Get the user ID from claims
-            var userId = GetUserIdFromClaims();
-            if (string.IsNullOrEmpty(userId))
+            try 
             {
-                return BadRequest(new { message = "Invalid token - Could not extract user ID" });
-            }
-
-            _logger.LogInformation($"Updating profile for user with ExternalAuthId: {userId}");
-
-            // Get user from database
-            var user = await _userService.GetUserByExternalIdAsync(userId);
-            if (user == null)
-            {
-                _logger.LogWarning($"User not found with ExternalAuthId: {userId}");
-                return NotFound(new { message = "User not found" });
-            }
-
-            // Update user properties
-            if (request.FirstName != null)
-                user.FirstName = request.FirstName;
+                // Log full request details for debugging
+                _logger.LogInformation($"Profile update request received. Headers: {string.Join(", ", Request.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+                _logger.LogInformation($"Profile update request body: Age={request.Age}, Gender={request.Gender}, Phone={request.Phone}");
                 
-            if (request.LastName != null)
-                user.LastName = request.LastName;
-                
-            if (!string.IsNullOrEmpty(request.ProfileImageUrl))
-            {
-                user.ProfileImageUrl = request.ProfileImageUrl;
-            }
-            
-            // Update age and gender if provided
-            if (request.Age.HasValue)
-            {
-                user.Age = request.Age;
-                _logger.LogInformation($"Updating age to: {request.Age}");
-            }
-            
-            if (!string.IsNullOrEmpty(request.Gender))
-            {
-                user.Gender = request.Gender;
-                _logger.LogInformation($"Updating gender to: {request.Gender}");
-            }
-            
-            // Update phone if provided
-            if (!string.IsNullOrEmpty(request.Phone))
-            {
-                user.Phone = request.Phone;
-                _logger.LogInformation($"Updating phone to: {request.Phone}");
-            }
-
-            // Save changes
-            await _userService.UpdateUserAsync(user);
-            _logger.LogInformation($"Profile updated successfully for user: {user.Email}");
-
-            return Ok(new 
-            { 
-                message = "Profile updated successfully",
-                user = new
+                // Get the user ID from claims
+                var userId = GetUserIdFromClaims();
+                if (string.IsNullOrEmpty(userId))
                 {
-                    id = user.Id,
-                    email = user.Email,
-                    firstName = user.FirstName,
-                    lastName = user.LastName,
-                    age = user.Age,
-                    gender = user.Gender,
-                    phone = user.Phone,
-                    profileImageUrl = user.ProfileImageUrl,
-                    role = user.Role
+                    _logger.LogWarning("Profile update failed: Could not extract user ID from token");
+                    return BadRequest(new { message = "Invalid token - Could not extract user ID" });
                 }
-            });
+
+                _logger.LogInformation($"Updating profile for user with ExternalAuthId: {userId}");
+
+                // Get user from database
+                var user = await _userService.GetUserByExternalIdAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogWarning($"Profile update failed: User not found with ExternalAuthId: {userId}");
+                    return NotFound(new { message = "User not found" });
+                }
+
+                // Update user properties
+                if (request.FirstName != null)
+                {
+                    user.FirstName = request.FirstName;
+                    _logger.LogInformation($"Updating firstName to: {request.FirstName}");
+                }
+                
+                if (request.LastName != null)
+                {
+                    user.LastName = request.LastName;
+                    _logger.LogInformation($"Updating lastName to: {request.LastName}");
+                }
+                    
+                if (!string.IsNullOrEmpty(request.ProfileImageUrl))
+                {
+                    user.ProfileImageUrl = request.ProfileImageUrl;
+                    _logger.LogInformation($"Updating profileImageUrl to: {request.ProfileImageUrl}");
+                }
+                
+                // Update age and gender if provided
+                if (request.Age.HasValue)
+                {
+                    user.Age = request.Age;
+                    _logger.LogInformation($"Updating age to: {request.Age}");
+                }
+                
+                if (!string.IsNullOrEmpty(request.Gender))
+                {
+                    user.Gender = request.Gender;
+                    _logger.LogInformation($"Updating gender to: {request.Gender}");
+                }
+                
+                // Update phone if provided
+                if (!string.IsNullOrEmpty(request.Phone))
+                {
+                    user.Phone = request.Phone;
+                    _logger.LogInformation($"Updating phone to: {request.Phone}");
+                }
+
+                // Save changes
+                await _userService.UpdateUserAsync(user);
+                _logger.LogInformation($"Profile updated successfully for user: {user.Email}");
+
+                return Ok(new 
+                { 
+                    message = "Profile updated successfully",
+                    user = new
+                    {
+                        id = user.Id,
+                        email = user.Email,
+                        firstName = user.FirstName,
+                        lastName = user.LastName,
+                        age = user.Age,
+                        gender = user.Gender,
+                        phone = user.Phone,
+                        profileImageUrl = user.ProfileImageUrl,
+                        role = user.Role
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during profile update");
+                return StatusCode(500, new { message = $"An unexpected error occurred: {ex.Message}" });
+            }
         }
 
         [HttpPost]

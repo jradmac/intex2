@@ -52,9 +52,12 @@ const RegisterPage: React.FC = () => {
   
   // Check for saved registration data on mount
   useEffect(() => {
+    console.log('[DEBUG] RegisterPage useEffect: Checking session storage');
     // Check if we should be in profile step with data from session storage
     const storedToken = sessionStorage.getItem('tempToken');
     const storedUserData = sessionStorage.getItem('tempUserData');
+    
+    console.log('[DEBUG] RegisterPage useEffect: Found in session storage', { storedToken, storedUserData });
     
     if (storedToken && storedUserData) {
       try {
@@ -86,7 +89,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     
     try {
-      console.log('RegisterPage: Sending registration request');
+      console.log('[DEBUG] handleInitialRegister: Sending registration request');
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
@@ -94,11 +97,13 @@ const RegisterPage: React.FC = () => {
         lastName
       });
       
-      console.log('RegisterPage: Registration successful', response.data);
+      console.log('[DEBUG] handleInitialRegister: Registration API response', response.data);
       
       // For testing - create mock data if API doesn't return what we need
       const userId = response.data.userId || `user-${Date.now()}`;
+      // Important: Use the token directly from the API response if provided
       const token = response.data.token || `mock-token-${Date.now()}`;
+      console.log('[DEBUG] handleInitialRegister: Got token from response:', { token });
       
       // Store token and basic user data temporarily
       const userData = {
@@ -112,12 +117,13 @@ const RegisterPage: React.FC = () => {
       // Store data in state and localStorage as a backup
       setTempToken(token);
       setTempUserData(userData);
+      console.log('[DEBUG] handleInitialRegister: Set state', { token, userData });
       
       // Also store in session storage to prevent data loss on page refresh
       sessionStorage.setItem('tempToken', token);
       sessionStorage.setItem('tempUserData', JSON.stringify(userData));
       
-      console.log('RegisterPage: Saved temporary data', { token, userData });
+      console.log('[DEBUG] handleInitialRegister: Saved temporary data to session storage', { token, userData });
       
       // Move to profile completion step
       setCurrentStep(RegisterStep.PROFILE);
@@ -134,6 +140,8 @@ const RegisterPage: React.FC = () => {
     setError('');
     setLoading(true);
     
+    console.log('[DEBUG] handleProfileComplete: Starting profile completion');
+    
     try {
       // Try to get data from state first, then session storage as backup
       let userData = tempUserData;
@@ -141,24 +149,26 @@ const RegisterPage: React.FC = () => {
       
       // If data is missing from state, try to get from session storage
       if (!userData || !token) {
-        console.log('RegisterPage: Data missing from state, checking session storage');
+        console.log('[DEBUG] handleProfileComplete: Data missing from state, checking session storage');
         const storedToken = sessionStorage.getItem('tempToken');
         const storedUserData = sessionStorage.getItem('tempUserData');
+        
+        console.log('[DEBUG] handleProfileComplete: Retrieved from session storage', { storedToken, storedUserData });
         
         if (storedToken && storedUserData) {
           token = storedToken;
           userData = JSON.parse(storedUserData);
-          console.log('RegisterPage: Retrieved data from session storage', { token, userData });
+          console.log('[DEBUG] handleProfileComplete: Restored data from session storage', { token, userData });
         }
       }
       
       // If still no data, throw error
       if (!userData || !token) {
-        console.error('RegisterPage: Missing user data in both state and session storage');
+        console.error('[DEBUG] handleProfileComplete: Missing user data in both state and session storage');
         throw new Error('Missing user data. Please try registering again.');
       }
       
-      console.log('RegisterPage: Updating user profile with data', { userData, token });
+      console.log('[DEBUG] handleProfileComplete: Preparing to call /User/profile API with:', { userData, token, age, gender, phone });
       
       let profileUpdateSuccess = true;
       try {
@@ -178,11 +188,15 @@ const RegisterPage: React.FC = () => {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.warn(`API profile update failed: ${errorText}`);
+          console.warn(`[DEBUG] handleProfileComplete: API profile update failed (response not ok). Status: ${response.status}, Text: ${errorText}`);
           profileUpdateSuccess = false;
+        } else {
+          console.log('[DEBUG] handleProfileComplete: API profile update successful');
+          const responseData = await response.json();
+          console.log('[DEBUG] handleProfileComplete: API profile update response:', responseData);
         }
       } catch (apiError) {
-        console.warn('API profile update error (continuing with local update)', apiError);
+        console.warn('[DEBUG] handleProfileComplete: API profile update fetch error (continuing with local update)', apiError);
         profileUpdateSuccess = false;
       }
       
@@ -200,6 +214,7 @@ const RegisterPage: React.FC = () => {
       
       localStorage.setItem('token', token);
       localStorage.setItem('userData', JSON.stringify(completeUserData));
+      console.log('[DEBUG] handleProfileComplete: Saved final data to localStorage', { token, completeUserData });
       
       // Clean up session storage
       sessionStorage.removeItem('tempToken');
@@ -213,7 +228,7 @@ const RegisterPage: React.FC = () => {
       
       navigate('/home');
     } catch (err) {
-      console.error('RegisterPage: Profile completion error', err);
+      console.error('[DEBUG] handleProfileComplete: Error during profile completion process', err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
