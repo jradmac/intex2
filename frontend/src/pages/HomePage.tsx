@@ -1,145 +1,210 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const HomePage = () => {
+interface UserData {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  age?: number;
+  gender?: string;
+  phone?: string;
+  profileCompleted?: boolean;
+}
+
+// Movie interface for the dummy data
+interface Movie {
+  id: string;
+  title: string;
+  genre: string;
+  year: number;
+  posterUrl: string;
+}
+
+// Dummy movie data to display on the home page
+const DUMMY_MOVIES: Movie[] = [
+  {
+    id: "1",
+    title: "The Shawshank Redemption",
+    genre: "Drama",
+    year: 1994,
+    posterUrl: "https://via.placeholder.com/150x225"
+  },
+  {
+    id: "2",
+    title: "The Godfather",
+    genre: "Crime, Drama",
+    year: 1972,
+    posterUrl: "https://via.placeholder.com/150x225"
+  },
+  {
+    id: "3",
+    title: "Pulp Fiction",
+    genre: "Crime, Drama",
+    year: 1994,
+    posterUrl: "https://via.placeholder.com/150x225"
+  },
+  {
+    id: "4",
+    title: "The Dark Knight",
+    genre: "Action, Crime, Drama",
+    year: 2008,
+    posterUrl: "https://via.placeholder.com/150x225"
+  }
+];
+
+const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Define movies state - we'll use setMovies later when implementing 
+  // movie adding/filtering functionality
+  const [movies, /* setMovies */] = useState<Movie[]>(DUMMY_MOVIES);
 
   useEffect(() => {
     // Check if user is logged in
+    const token = localStorage.getItem('token');
     const userDataStr = localStorage.getItem('userData');
-    console.log('HomePage - userData from localStorage:', userDataStr);
     
-    if (!userDataStr) {
-      console.log('HomePage - No userData found, redirecting to login');
+    if (!token || !userDataStr) {
+      console.log('HomePage: No auth data found, redirecting to login');
       navigate('/login');
       return;
     }
-
-    setUserData(JSON.parse(userDataStr));
+    
+    try {
+      const parsedUserData = JSON.parse(userDataStr);
+      setUserData(parsedUserData);
+    } catch (error) {
+      console.error('HomePage: Error parsing user data', error);
+      localStorage.clear();
+      navigate('/login');
+    } finally {
+      setLoading(false);
+    }
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
+    localStorage.clear();
     navigate('/login');
   };
 
-  const containerStyle = {
-    padding: '2rem',
-    maxWidth: '1200px',
-    margin: '0 auto'
+  // This function will be implemented later to add a new movie to the list
+  const handleAddMovie = () => {
+    // For now, we're just logging a message
+    console.log('Add movie functionality will be implemented later');
+    
+    // We'll uncomment and complete this implementation when ready:
+    // const newMovie = {
+    //   id: `${Date.now()}`,
+    //   title: "New Movie",
+    //   genre: "TBD",
+    //   year: 2023,
+    //   posterUrl: "https://via.placeholder.com/150x225"
+    // };
+    // When we're ready to implement this feature, we'll:
+    // 1. Uncomment the setMovies variable in the useState declaration
+    // 2. Implement the actual movie adding logic here
   };
 
-  const headerStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #eaeaea'
-  };
-
-  const contentStyle = {
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-  };
-
-  const buttonStyle = {
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    fontWeight: 'bold',
-    padding: '0.5rem 1rem',
-    borderRadius: '4px',
-    border: 'none',
-    cursor: 'pointer',
-    marginRight: '0.5rem'
-  };
-
-  const debugContainerStyle = {
-    marginTop: '2rem',
-    padding: '1rem',
-    backgroundColor: '#f1f5f9',
-    borderRadius: '8px'
-  };
-
-  if (!userData) {
+  if (loading) {
     return (
-      <div style={{padding: '2rem'}}>
-        <h2>Loading...</h2>
-        <div style={debugContainerStyle}>
-          <h3>Debug Navigation</h3>
-          <p>If you're stuck here, try one of these links:</p>
-          <button 
-            style={buttonStyle} 
-            onClick={() => window.location.href = '/login'}
-          >
-            Go to Login
-          </button>
-          <button 
-            style={buttonStyle} 
-            onClick={() => window.location.href = '/profile'}
-          >
-            Go to Profile
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-xl font-bold">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
-        <h1>CineNiche</h1>
-        <div>
-          <span style={{ marginRight: '1rem' }}>
-            Welcome, {userData.firstName || userData.email}
-          </span>
-          <button style={buttonStyle} onClick={handleLogout}>
-            Logout
-          </button>
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Movie Explorer</h1>
+          
+          <div className="flex items-center space-x-4">
+            {userData && (
+              <span className="text-gray-600">
+                Welcome, {userData.firstName}!
+              </span>
+            )}
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
-      <div style={contentStyle}>
-        <h2 style={{ marginBottom: '1rem' }}>Welcome to CineNiche!</h2>
-        <p>
-          Your movie rating and recommendation platform. This is a placeholder home page.
-        </p>
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4">Your Profile</h2>
+          {userData && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-500 font-medium">Name</p>
+                <p>{userData.firstName} {userData.lastName}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 font-medium">Email</p>
+                <p>{userData.email}</p>
+              </div>
+              {userData.age && (
+                <div>
+                  <p className="text-gray-500 font-medium">Age</p>
+                  <p>{userData.age}</p>
+                </div>
+              )}
+              {userData.gender && (
+                <div>
+                  <p className="text-gray-500 font-medium">Gender</p>
+                  <p>{userData.gender}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-        <div style={{ marginTop: '2rem' }}>
-          <h3>Your Profile:</h3>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            <li><strong>Email:</strong> {userData.email}</li>
-            <li><strong>Name:</strong> {userData.firstName} {userData.lastName}</li>
-            {userData.age && <li><strong>Age:</strong> {userData.age}</li>}
-            {userData.gender && <li><strong>Gender:</strong> {userData.gender}</li>}
-            <li><strong>Role:</strong> {userData.role}</li>
-          </ul>
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Featured Movies</h2>
+            <button 
+              onClick={handleAddMovie}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Add Movie
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {movies.map(movie => (
+              <div key={movie.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <img 
+                  src={movie.posterUrl} 
+                  alt={`${movie.title} poster`}
+                  className="w-full h-60 object-cover"
+                />
+                <div className="p-4">
+                  <h3 className="font-bold text-lg mb-1">{movie.title}</h3>
+                  <p className="text-gray-600 text-sm">{movie.genre}</p>
+                  <p className="text-gray-600 text-sm">{movie.year}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        
-        <div style={debugContainerStyle}>
-          <h3>Debug Navigation</h3>
-          <button 
-            style={buttonStyle} 
-            onClick={() => window.location.href = '/profile'}
-          >
-            Edit Profile
-          </button>
-          <button 
-            style={buttonStyle} 
-            onClick={() => {
-              console.log('Current localStorage:', localStorage);
-            }}
-          >
-            Log LocalStorage
-          </button>
+      </main>
+      
+      <footer className="bg-gray-800 text-white py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center">© 2023 Movie Explorer. All rights reserved.</p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
 
-export default HomePage; 
+export default HomePage;
