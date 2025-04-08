@@ -33,8 +33,10 @@ const RegisterPage: React.FC = () => {
   const [tempToken, setTempToken] = useState<string | null>(null);
 
   useEffect(() => {
+
     const storedToken = sessionStorage.getItem('tempToken');
     const storedUserData = sessionStorage.getItem('tempUserData');
+
 
     if (storedToken && storedUserData) {
       try {
@@ -61,6 +63,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
+
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
@@ -69,6 +72,7 @@ const RegisterPage: React.FC = () => {
       });
 
       const userId = response.data.userId || `user-${Date.now()}`;
+      // Important: Use the token directly from the API response if provided
       const token = response.data.token || `mock-token-${Date.now()}`;
 
       const userData = {
@@ -97,12 +101,13 @@ const RegisterPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
+              
     try {
       let userData = tempUserData;
       let token = tempToken;
 
       if (!userData || !token) {
+
         const storedToken = sessionStorage.getItem('tempToken');
         const storedUserData = sessionStorage.getItem('tempUserData');
 
@@ -143,6 +148,7 @@ const RegisterPage: React.FC = () => {
 
       navigate('/home');
     } catch (err) {
+
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);

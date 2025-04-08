@@ -94,11 +94,17 @@ namespace CineNiche.API.Controllers
                 {
                     _logger.LogWarning($"Failed to send verification email: {verificationResult.Error}");
                 }
+                
+                // Generate a JWT token for the newly created user to be used for subsequent API calls
+                // This token will authorize the profile completion step
+                var token = _tokenService.GenerateJwtToken(stytchResult.UserId, "User");
+                _logger.LogInformation($"Generated authentication token for new user");
 
                 return Ok(new { 
                     message = "User registered successfully", 
                     userId = createdUser,
-                    emailVerificationSent = verificationResult.Success
+                    emailVerificationSent = verificationResult.Success,
+                    token = token // Include token in the response
                 });
             }
             catch (Exception ex)
