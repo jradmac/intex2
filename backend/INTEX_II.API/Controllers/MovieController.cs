@@ -17,143 +17,143 @@ namespace Mission11.API.Controllers
             _movieContext = temp;
         }
 
-    [HttpGet("GetMovies")]
-    public IActionResult Get(
-        int pageSize = 10,
-        int pageNum = 1,
-        string? searchQuery = "",
-        string? director = "",
-        int? minYear = null,
-        int? maxYear = null,
-        [FromQuery] List<string>? genres = null,
-        [FromQuery] List<string>? ratings = null)
-    {
-        var allMovies = _movieContext.Movies.ToList();
-        IEnumerable<Movie> filteredMovies = allMovies;
-
-        // 🎯 Genre filter
-        if (genres != null && genres.Any())
+        [HttpGet("GetMovies")]
+        public IActionResult Get(
+            int pageSize = 10,
+            int pageNum = 1,
+            string? searchQuery = "",
+            string? director = "",
+            int? minYear = null,
+            int? maxYear = null,
+            [FromQuery] List<string>? genres = null,
+            [FromQuery] List<string>? ratings = null)
         {
-            filteredMovies = filteredMovies.Where(m =>
-                !string.IsNullOrEmpty(m.genres) &&
-                genres.Any(g => m.genres.Contains(g, StringComparison.OrdinalIgnoreCase))
-            );
-        }
+            var allMovies = _movieContext.Movies.ToList();
+            IEnumerable<Movie> filteredMovies = allMovies;
 
-        // 🟢 Ratings filter
-        if (ratings != null && ratings.Any())
-        {
-            filteredMovies = filteredMovies.Where(m =>
-                !string.IsNullOrEmpty(m.rating) &&
-                ratings.Contains(m.rating, StringComparer.OrdinalIgnoreCase)
-            );
-        }
+            if (genres != null && genres.Any())
+            {
+                filteredMovies = filteredMovies.Where(m =>
+                    !string.IsNullOrEmpty(m.genres) &&
+                    genres.Any(g => m.genres.Contains(g, StringComparison.OrdinalIgnoreCase))
+                );
+            }
 
-        // 📆 Year Range filter
-        if (minYear.HasValue)
-        {
-            filteredMovies = filteredMovies.Where(m => m.release_year >= minYear);
-        }
+            if (ratings != null && ratings.Any())
+            {
+                filteredMovies = filteredMovies.Where(m =>
+                    !string.IsNullOrEmpty(m.rating) &&
+                    ratings.Contains(m.rating, StringComparer.OrdinalIgnoreCase)
+                );
+            }
 
-        if (maxYear.HasValue)
-        {
-            filteredMovies = filteredMovies.Where(m => m.release_year <= maxYear);
-        }
+            if (minYear.HasValue)
+            {
+                filteredMovies = filteredMovies.Where(m => m.release_year >= minYear);
+            }
 
-        List<Movie> titleMatches = filteredMovies.ToList();
-        List<Movie> directorMatches = filteredMovies.ToList();
+            if (maxYear.HasValue)
+            {
+                filteredMovies = filteredMovies.Where(m => m.release_year <= maxYear);
+            }
 
-        // 🔍 Fuzzy Title/Cast/Description
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            var searchLower = searchQuery.ToLower();
+            List<Movie> titleMatches = filteredMovies.ToList();
+            List<Movie> directorMatches = filteredMovies.ToList();
 
-            var scored = titleMatches
-                .Select(movie =>
-                {
-                    string title = movie.title?.ToLower() ?? "";
-                    string desc = movie.description?.ToLower() ?? "";
-                    string cast = movie.cast?.ToLower() ?? "";
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var searchLower = searchQuery.ToLower();
 
-                    int score = new[]
+                var scored = titleMatches
+                    .Select(movie =>
                     {
-                        Fuzz.Ratio(searchLower, title),
-                        Fuzz.PartialRatio(searchLower, title),
-                        Fuzz.PartialRatio(searchLower, desc),
-                        Fuzz.PartialRatio(searchLower, cast)
-                    }.Max();
+                        string title = movie.title?.ToLower() ?? "";
+                        string desc = movie.description?.ToLower() ?? "";
+                        string cast = movie.cast?.ToLower() ?? "";
 
-                    int prefixBonus = title.StartsWith(searchLower) ? 30 :
-                        (title.Length >= 5 && searchLower.Length >= 3 &&
-                        title.Substring(0, Math.Min(5, title.Length)).StartsWith(searchLower.Substring(0, 3)))
-                        ? 15 : 0;
+                        int baseScore = new[] {
+                            Fuzz.Ratio(searchLower, title),
+                            Fuzz.PartialRatio(searchLower, title),
+                            Fuzz.PartialRatio(searchLower, desc),
+                            Fuzz.PartialRatio(searchLower, cast)
+                        }.Max();
 
-                    return new { Movie = movie, Score = score + prefixBonus };
-                })
-                .OrderByDescending(x => x.Score)
+                        int exactMatchBonus = title == searchLower && searchLower.Length == title.Length ? 150 : 0;
+
+                        int prefixBonus = title.StartsWith(searchLower)
+                            ? 100
+                            : (title.Length >= 5 && searchLower.Length >= 3 &&
+                               title.Substring(0, Math.Min(5, title.Length))
+                                     .StartsWith(searchLower.Substring(0, 3)))
+                                ? 30
+                                : 0;
+
+                        int score = baseScore + exactMatchBonus + prefixBonus;
+
+                        return new { Movie = movie, Score = score };
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .ToList();
+
+                int dynamicThreshold = searchLower.Length <= 2 ? 0 : 40;
+
+                titleMatches = scored
+                    .Where(x => x.Score > dynamicThreshold)
+                    .DefaultIfEmpty(scored.First())
+                    .Select(x => x.Movie)
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(director))
+            {
+                var directorLower = director.ToLower();
+
+                var scored = directorMatches
+                    .Select(movie =>
+                    {
+                        string dir = movie.director?.ToLower() ?? "";
+                        int score = Fuzz.PartialRatio(directorLower, dir);
+                        return new { Movie = movie, Score = score };
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .ToList();
+
+                directorMatches = scored
+                    .Where(x => x.Score > 40)
+                    .DefaultIfEmpty(scored.First())
+                    .Select(x => x.Movie)
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery) && !string.IsNullOrWhiteSpace(director))
+            {
+                filteredMovies = titleMatches.Intersect(directorMatches);
+            }
+            else if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                filteredMovies = titleMatches;
+            }
+            else if (!string.IsNullOrWhiteSpace(director))
+            {
+                filteredMovies = directorMatches;
+            }
+
+            var totalNumMovies = filteredMovies.Count();
+
+            var pagedMovies = filteredMovies
+                .Skip((pageNum - 1) * pageSize)
+                .Take(pageSize)
                 .ToList();
 
-            titleMatches = scored
-                .Where(x => x.Score > 40)
-                .DefaultIfEmpty(scored.First())
-                .Select(x => x.Movie)
-                .ToList();
+            var result = new
+            {
+                Movies = pagedMovies,
+                TotalNumMovies = totalNumMovies
+            };
+
+            return Ok(result);
         }
 
-        // 🎬 Fuzzy Director search
-        if (!string.IsNullOrWhiteSpace(director))
-        {
-            var directorLower = director.ToLower();
-
-            var scored = directorMatches
-                .Select(movie =>
-                {
-                    string dir = movie.director?.ToLower() ?? "";
-                    int score = Fuzz.PartialRatio(directorLower, dir);
-                    return new { Movie = movie, Score = score };
-                })
-                .OrderByDescending(x => x.Score)
-                .ToList();
-
-            directorMatches = scored
-                .Where(x => x.Score > 40)
-                .DefaultIfEmpty(scored.First())
-                .Select(x => x.Movie)
-                .ToList();
-        }
-
-        // 🧠 Combine: If both used, intersect; otherwise use whichever applied
-        if (!string.IsNullOrWhiteSpace(searchQuery) && !string.IsNullOrWhiteSpace(director))
-        {
-            filteredMovies = titleMatches.Intersect(directorMatches);
-        }
-        else if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            filteredMovies = titleMatches;
-        }
-        else if (!string.IsNullOrWhiteSpace(director))
-        {
-            filteredMovies = directorMatches;
-        }
-
-
-        var totalNumMovies = filteredMovies.Count();
-
-        var pagedMovies = filteredMovies
-            .Skip((pageNum - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        var result = new
-        {
-            Movies = pagedMovies,
-            TotalNumMovies = totalNumMovies
-        };
-
-        return Ok(result);
-    }
-
-        //This is a request to get the movie details for the individual movie info page: 
         [HttpGet("{show_id}")]
         public IActionResult GetMovieById(string show_id)
         {
@@ -200,7 +200,6 @@ namespace Mission11.API.Controllers
                 return NotFound();
             }
 
-            // Basic fields
             existingMovie.type = updatedMovie.type;
             existingMovie.title = updatedMovie.title;
             existingMovie.director = updatedMovie.director;

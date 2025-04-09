@@ -4,6 +4,7 @@ import styled, { createGlobalStyle } from 'styled-components';
 import logo from '../images/CineNicheLogo.png';
 import MovieList from '../components/MovieLIst';
 import { logout } from '../components/AuthAPI';
+import SearchOverlay from '../components/SearchOverly'; 
 
 interface UserData {
   userId: string;
@@ -22,6 +23,7 @@ const HomePage: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
 
   const token = localStorage.getItem('authToken');
   const userDataStr = localStorage.getItem('userData');
@@ -63,6 +65,7 @@ const HomePage: React.FC = () => {
         <Header>
           <LogoImg src={logo} alt="CineNiche Logo" onClick={() => navigate('/home')} />
           <HeaderRight>
+            <SearchButton onClick={() => setShowSearchOverlay(true)}>Search</SearchButton>
             {userData && <WelcomeText>Welcome, {userData.firstName}!</WelcomeText>}
             <LogoutButton onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? 'Logging Out...' : 'Logout'}
@@ -91,6 +94,10 @@ const HomePage: React.FC = () => {
           &copy; {new Date().getFullYear()} CineNiche. All rights reserved.
         </Footer>
       </PageWrapper>
+
+      {showSearchOverlay && (
+        <SearchOverlay onClose={() => setShowSearchOverlay(false)} />
+      )}
     </>
   );
 };
@@ -160,6 +167,20 @@ const LogoutButton = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+`;
+
+const SearchButton = styled.button`
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &:hover {
+    background: #333;
   }
 `;
 
