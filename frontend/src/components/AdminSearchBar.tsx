@@ -20,7 +20,7 @@ const AdminSearchBar: React.FC<Props> = ({ onSearch }) => {
       try {
         const response = await fetch("http://localhost:5000/api/Movie/GetGenres");
         const data = await response.json();
-        setAvailableGenres(data);
+        setAvailableGenres(data.filter((genre: string) => genre.trim() !== ""));
       } catch (error) {
         console.error("Error fetching genres:", error);
       }
