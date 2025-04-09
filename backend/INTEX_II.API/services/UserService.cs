@@ -15,6 +15,8 @@ namespace CineNiche.API.Services
         private readonly UserDbContext _context;
         private readonly ILogger<UserService> _logger;
 
+        
+
         public UserService(UserDbContext context, ILogger<UserService> logger)
         {
             _context = context;

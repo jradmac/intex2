@@ -174,6 +174,86 @@ namespace CineNiche.API.Controllers
             }
         }
 
+        // OAuth initiation endpoint
+[HttpGet("oauth/google")]
+public async Task<IActionResult> GoogleOAuth([FromQuery] bool signup = false)
+{
+    try
+    {
+        // Get the redirect URL from Stytch
+        var redirectResult = await _stytchService.GetOAuthRedirectUrlAsync(
+            "google", 
+            signup, 
+            $"{Request.Scheme}://{Request.Host}/api/auth/oauth/callback");
+        
+        if (!redirectResult.Success)
+        {
+            _logger.LogError($"Failed to get OAuth redirect URL: {redirectResult.Error}");
+            return StatusCode(500, new { message = "Failed to initiate OAuth flow" });
+        }
+        
+        // Redirect the user to the Google authentication page
+        return Redirect(redirectResult.RedirectUrl);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error during OAuth initiation");
+        return StatusCode(500, new { message = "An unexpected error occurred" });
+    }
+}
+
+[HttpGet("oauth/callback")]
+public async Task<IActionResult> OAuthCallback([FromQuery] string token, [FromQuery] string state_token)
+{
+    try
+    {
+        // Exchange the code for a session token
+        var authResult = await _stytchService.ExchangeOAuthCodeAsync(token, state_token);
+        
+        if (!authResult.Success)
+        {
+            _logger.LogError($"OAuth authentication failed: {authResult.Error}");
+            return Redirect("/login?error=authentication_failed");
+        }
+        
+        // Get or create the user in your database
+        var existingUser = await _userService.GetUserByExternalIdAsync(authResult.UserId);
+        
+        if (existingUser == null)
+        {
+            // New user - create in your database
+            var userToCreate = new User
+            {
+                ExternalAuthId = authResult.UserId,
+                Email = authResult.Email,
+                FirstName = authResult.FirstName,
+                LastName = authResult.LastName,
+                Role = "User" // Default role
+            };
+            
+            // CreateUserAsync returns the created user object, not just an ID
+            existingUser = await _userService.CreateUserAsync(userToCreate);
+            
+            if (existingUser == null)
+            {
+                _logger.LogError("Failed to create user after OAuth authentication");
+                return Redirect("/login?error=user_creation_failed");
+            }
+        }
+        
+        // Generate a JWT token
+        var jwtToken = _tokenService.GenerateJwtToken(authResult.UserId, existingUser.Role);
+        
+        // Use a client-side redirect with the token
+        return Redirect($"/oauth-success?token={jwtToken}&userId={existingUser.Id}&email={existingUser.Email}&firstName={existingUser.FirstName}&lastName={existingUser.LastName}&role={existingUser.Role}");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error during OAuth callback");
+        return Redirect("/login?error=server_error");
+    }
+}
+
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
         {

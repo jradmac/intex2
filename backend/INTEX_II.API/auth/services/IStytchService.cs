@@ -23,6 +23,10 @@ namespace CineNiche.Auth.Services
         // Session management
         Task<bool> RevokeSessionAsync(string sessionId);
         Task<SessionResult> GetSessionAsync(string sessionId);
+
+        // OAuth methods
+        Task<OAuthRedirectResult> GetOAuthRedirectUrlAsync(string provider, bool signup, string redirectUrl);
+        Task<OAuthAuthResult> ExchangeOAuthCodeAsync(string code, string state);
         
         // Remove these two methods as they're now in TokenService
         // string GenerateJwtToken(string userId, string role);
@@ -66,4 +70,22 @@ namespace CineNiche.Auth.Services
         public bool Active { get; set; }
         public string Error { get; set; }
     }
+    public class OAuthRedirectResult
+{
+    public bool Success { get; set; }
+    public string RedirectUrl { get; set; }
+    public string State { get; set; }
+    public string Error { get; set; }
+}
+
+public class OAuthAuthResult
+{
+    public bool Success { get; set; }
+    public string UserId { get; set; }
+    public string Email { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public string SessionId { get; set; }
+    public string Error { get; set; }
+}
 }

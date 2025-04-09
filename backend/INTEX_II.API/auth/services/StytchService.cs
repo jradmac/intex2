@@ -627,5 +627,128 @@ namespace CineNiche.Auth.Services
             [JsonPropertyName("status")]
             public string? Status { get; set; }
         }
+
+        public async Task<OAuthRedirectResult> GetOAuthRedirectUrlAsync(string provider, bool signup, string redirectUrl)
+{
+    try
+    {
+        var requestData = new
+        {
+            provider_type = provider,
+            redirect_url = redirectUrl,
+            login_redirect_url = redirectUrl,
+            signup_redirect_url = redirectUrl
+        };
+        
+        var content = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
+        var response = await _httpClient.PostAsync("oauth/start", content);
+        
+        if (response.IsSuccessStatusCode)
+        {
+            var responseContent = await response.Content.ReadAsStringAsync();
+            
+            // Parse from JSON directly since we don't have a class for this response
+            using JsonDocument doc = JsonDocument.Parse(responseContent);
+            string url = doc.RootElement.GetProperty("url").GetString() ?? string.Empty;
+            string state = doc.RootElement.GetProperty("state").GetString() ?? string.Empty;
+            
+            return new OAuthRedirectResult
+            {
+                Success = true,
+                RedirectUrl = url,
+                State = state
+            };
+        }
+        
+        return new OAuthRedirectResult
+        {
+            Success = false,
+            Error = $"Failed to get OAuth URL. Status: {response.StatusCode}"
+        };
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"OAuth URL generation error: {ex.Message}");
+        return new OAuthRedirectResult
+        {
+            Success = false,
+            Error = $"OAuth URL generation error: {ex.Message}"
+        };
+    }
+}
+
+public async Task<OAuthAuthResult> ExchangeOAuthCodeAsync(string code, string state)
+{
+    try
+    {
+        var requestData = new
+        {
+            token = code,
+            state_token = state
+        };
+        
+        var content = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
+        var response = await _httpClient.PostAsync("oauth/authenticate", content);
+        
+        if (response.IsSuccessStatusCode)
+        {
+            var responseContent = await response.Content.ReadAsStringAsync();
+            
+            // Parse the response to get user information
+            using JsonDocument doc = JsonDocument.Parse(responseContent);
+            
+            string userId = doc.RootElement.GetProperty("user_id").GetString() ?? string.Empty;
+            string sessionId = doc.RootElement.GetProperty("session_id").GetString() ?? string.Empty;
+            
+            // Extract email and name if available
+            string email = string.Empty;
+            string firstName = string.Empty;
+            string lastName = string.Empty;
+            
+            if (doc.RootElement.TryGetProperty("user", out JsonElement userElement))
+            {
+                if (userElement.TryGetProperty("emails", out JsonElement emailsElement) && 
+                    emailsElement.GetArrayLength() > 0)
+                {
+                    email = emailsElement[0].GetProperty("email").GetString() ?? string.Empty;
+                }
+                
+                if (userElement.TryGetProperty("name", out JsonElement nameElement))
+                {
+                    firstName = nameElement.TryGetProperty("first_name", out JsonElement firstNameElement) ? 
+                        firstNameElement.GetString() ?? string.Empty : string.Empty;
+                        
+                    lastName = nameElement.TryGetProperty("last_name", out JsonElement lastNameElement) ? 
+                        lastNameElement.GetString() ?? string.Empty : string.Empty;
+                }
+            }
+            
+            return new OAuthAuthResult
+            {
+                Success = true,
+                UserId = userId,
+                SessionId = sessionId,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName
+            };
+        }
+        
+        return new OAuthAuthResult
+        {
+            Success = false,
+            Error = $"OAuth authentication failed. Status: {response.StatusCode}"
+        };
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"OAuth authentication error: {ex.Message}");
+        return new OAuthAuthResult
+        {
+            Success = false,
+            Error = $"OAuth authentication error: {ex.Message}"
+        };
+    }
+}
     }
 }
