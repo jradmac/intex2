@@ -121,3 +121,18 @@ export const getMovieById = async (show_id: string): Promise<Movie> => {
     }
     return await response.json();
 };
+
+export const getSimilarMovies = async (showId: string, limit: number = 10): Promise<Movie[]> => {
+    try {
+        const response = await fetch(`${API_URL}/GetSimilarMovies/${showId}?limit=${limit}`);
+        
+        if (!response.ok) {
+            throw new Error("Failed to fetch similar movies");
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching similar movies:", error);
+        throw error;
+    }
+};
