@@ -1,4 +1,3 @@
-
 // File: /frontend/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
@@ -6,7 +5,7 @@ import logo from '../images/CineNicheLogo.png';
 import { logout } from '../components/AuthAPI';
 import { fetchAllRecommendations, MovieRecommendation } from '../api/RecommendationAPI';
 import RecommendationCategory from '../components/RecommendationCategory';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import SearchOverlay from '../components/SearchOverly';
 
 interface UserData {
@@ -190,7 +189,11 @@ const HomePage: React.FC = () => {
           )}
         </MainContent>
 
-        <Footer>&copy; {new Date().getFullYear()} CineNiche. All rights reserved.</Footer>
+        <Footer>
+          &copy; {new Date().getFullYear()} CineNiche. All rights reserved.{' '}
+          <FooterLink to="/privacy">Privacy Policy</FooterLink>
+        </Footer>
+
       </PageWrapper>
 
       {showSearchOverlay && <SearchOverlay onClose={() => setShowSearchOverlay(false)} />}
@@ -398,4 +401,13 @@ const ErrorMessage = styled.div`
   padding: 15px;
   border-radius: 5px;
   margin-bottom: 20px;
+`;
+const FooterLink = styled(Link)`
+  margin-left: 16px;
+  color: #888;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  &:hover {
+    color: #fff;
+  }
 `;
