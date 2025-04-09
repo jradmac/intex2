@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "VOb8xLiGiOc=",
+  "dgSpecHash": "Jcxr8cwJiVs=",
   "success": true,
   "projectFilePath": "/Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/Mission11.API.csproj",
   "expectedPackageFiles": [
+    "/Users/jared/.nuget/packages/fuzzysharp/2.0.2/fuzzysharp.2.0.2.nupkg.sha512",
     "/Users/jared/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/Users/jared/.nuget/packages/microsoft.aspnetcore.authentication.jwtbearer/8.0.0/microsoft.aspnetcore.authentication.jwtbearer.8.0.0.nupkg.sha512",
     "/Users/jared/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",

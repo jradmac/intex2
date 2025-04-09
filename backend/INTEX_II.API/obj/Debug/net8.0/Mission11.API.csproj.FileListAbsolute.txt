@@ -577,3 +577,6 @@ C:/Users/gille/OneDrive/Documents/University/INTEX II/3-13_INTEX_II/backend/INTE
 /Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/obj/Debug/net8.0/Mission11.API.pdb
 /Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/obj/Debug/net8.0/Mission11.API.genruntimeconfig.cache
 /Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/obj/Debug/net8.0/ref/Mission11.API.dll
+/Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/bin/Debug/net8.0/FuzzySharp.dll
+/Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/bin/Debug/net8.0/scripts/package-lock.json
+/Users/jared/Desktop/3-13_INTEX_II/backend/INTEX_II.API/bin/Debug/net8.0/scripts/package.json
