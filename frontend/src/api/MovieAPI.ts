@@ -10,27 +10,29 @@ const API_URL = "http://localhost:5000/api/Movie"
 export const fetchMovies = async (
     pageSize: Number,
     pageNum: Number,
-    selectedGenres: string[]
-): Promise<FetchMoviesResponse> => {
-    try{
-        const genreParams = selectedGenres
-            .map((genre) => `genres=${encodeURIComponent(genre)}`)
-            .join('&');
-
-        const response = await fetch(
-            `${API_URL}/GetMovies?pageSize=${pageSize}&pageNum=${pageNum}${selectedGenres.length ? `&${genreParams}` : ""}`
-        );
-
-    if (!response.ok) {
+    selectedGenres: string[],
+    searchQuery: string
+  ): Promise<FetchMoviesResponse> => {
+    try {
+      const genreParams = selectedGenres
+        .map((genre) => `genres=${encodeURIComponent(genre)}`)
+        .join('&');
+  
+      const response = await fetch(
+        `${API_URL}/GetMovies?pageSize=${pageSize}&pageNum=${pageNum}&searchQuery=${encodeURIComponent(searchQuery)}${selectedGenres.length ? `&${genreParams}` : ""}`
+      );
+  
+      if (!response.ok) {
         throw new Error('Network response was not ok');
-    }
-
-    return await response.json();
+      }
+  
+      return await response.json();
     } catch (error) {
-        console.error("Error fetching movies:", error);
-        throw error;
-    }      
-};
+      console.error("Error fetching movies:", error);
+      throw error;
+    }
+  };
+  
 
 // Helper to get the auth token from localStorage
 const getAuthToken = (): string | null => {

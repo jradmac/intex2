@@ -17,12 +17,22 @@ namespace Mission11.API.Controllers
         }
 
         [HttpGet("GetMovies")]
-        public IActionResult Get(int pageSize = 10, int pageNum = 1, [FromQuery] List<string>? genres = null)
+        public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery = "", [FromQuery] List<string>? genres = null)
         {
             var query = _movieContext.Movies.AsQueryable();
 
-            //Okay when we come back to filtering. We are getting categories passed into the route and we need to do someting with it. 
-            //That's what the code below this is for, rn it does nothing. 
+            // 🔍 Search filter
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowered = searchQuery.ToLower();
+                query = query.Where(m =>
+                    (m.title != null && m.title.ToLower().Contains(lowered)) ||
+                    (m.description != null && m.description.ToLower().Contains(lowered)) ||
+                    (m.cast != null && m.cast.ToLower().Contains(lowered))
+                );
+            }
+
+            // 🎯 Genre filter
             if (genres != null && genres.Any())
             {
                 query = query.Where(m => genres.Any(g => !string.IsNullOrEmpty(m.genres) && m.genres.Contains(g)));
@@ -30,18 +40,18 @@ namespace Mission11.API.Controllers
 
             var totalNumMovies = query.Count();
 
-            var something = query
+            var pagedMovies = query
                 .Skip((pageNum - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            var someObject = new
+            var result = new
             {
-                Movies = something,
+                Movies = pagedMovies,
                 TotalNumMovies = totalNumMovies
             };
 
-            return Ok(someObject);
+            return Ok(result);
         }
 
         [HttpGet("GetGenres")]
@@ -57,34 +67,16 @@ namespace Mission11.API.Controllers
                 .ToList();
 
             return Ok(genreList);
-}
+        }
 
         [HttpPost("AddMovie")]
         [Authorize(Policy = "AdminOnly")]
         public IActionResult AddMovie([FromBody] Movie newMovie)
         {
-           _movieContext.Movies.Add(newMovie);
-           _movieContext.SaveChanges();
-           return Ok(newMovie);
+            _movieContext.Movies.Add(newMovie);
+            _movieContext.SaveChanges();
+            return Ok(newMovie);
         }
-
-        // [HttpPut("UpdateMovie/{show_id}")]
-        // public IActionResult UpdateMovie(int show_id, [FromBody] Movie updatedMovie)
-        // {
-        //    var existingMovie = _movieContext.Movies.Find(show_id);
-
-        //    existingMovie.type = updatedMovie.type;
-        //    existingMovie.Description = updatedMovie.Description;
-        //    existingMovie.Poster = updatedMovie.Poster;
-        //    existingMovie.Rating = updatedMovie.Rating;
-        //    existingMovie.Category = updatedMovie.Category;
-        //    existingMovie.Price = updatedMovie.Price;
-
-        //    _movieContext.Movies.Update(existingMovie);
-        //    _movieContext.SaveChanges();
-
-        //    return Ok(existingMovie);
-        // }
 
         [HttpPut("UpdateMovie/{show_id}")]
         [Authorize(Policy = "AdminOnly")]
@@ -118,18 +110,17 @@ namespace Mission11.API.Controllers
         [Authorize(Policy = "AdminOnly")]
         public IActionResult DeleteMovie(string show_id)
         {
-           var movie = _movieContext.Movies.Find(show_id);
+            var movie = _movieContext.Movies.Find(show_id);
 
-           if (movie == null)
-           {
-               return NotFound(new {message = "Movie not found" });
-           }
+            if (movie == null)
+            {
+                return NotFound(new { message = "Movie not found" });
+            }
 
-           _movieContext.Movies.Remove(movie);
-           _movieContext.SaveChanges();
+            _movieContext.Movies.Remove(movie);
+            _movieContext.SaveChanges();
 
-           return NoContent();
+            return NoContent();
         }
     }
 }
-
