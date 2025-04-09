@@ -8,11 +8,7 @@ import AdminSearchBar from "../components/AdminSearchBar";
 
 type AdminSearchFilters = {
   title: string;
-  director: string;
   genres: string[];
-  ratings: string[];
-  minYear: number | null;
-  maxYear: number | null;
 };
 
 const AdminMoviesPage = () => {
@@ -27,22 +23,13 @@ const AdminMoviesPage = () => {
 
   const [filters, setFilters] = useState<AdminSearchFilters>({
     title: "",
-    director: "",
-    genres: [],
-    ratings: [],
-    minYear: null,
-    maxYear: null
+    genres: []
   });
 
   useEffect(() => {
     const loadMovies = async () => {
       try {
-        const data = await fetchMovies(
-          pageSize,
-          pageNum,
-          filters.genres,
-          filters.title || filters.director // TEMP: until full filter support
-        );
+        const data = await fetchMovies(pageSize, pageNum, filters.genres, filters.title);
         setMovies(data.movies);
         setTotalPages(Math.ceil(data.totalNumMovies / pageSize));
       } catch (error) {
@@ -74,7 +61,6 @@ const AdminMoviesPage = () => {
     <div>
       <h1>Admin - Movies</h1>
 
-      {/* 🔍 Admin SearchBar */}
       <AdminSearchBar
         onSearch={(newFilters) => {
           setFilters(newFilters);
@@ -92,7 +78,7 @@ const AdminMoviesPage = () => {
         <NewMovieForm
           onSuccess={() => {
             setShowForm(false);
-            fetchMovies(pageSize, pageNum, [], "").then((data) => setMovies(data.movies));
+            fetchMovies(pageSize, pageNum, filters.genres, filters.title).then((data) => setMovies(data.movies));
           }}
           onCancel={() => setShowForm(false)}
         />
@@ -103,7 +89,7 @@ const AdminMoviesPage = () => {
           movie={editingMovie}
           onSuccess={() => {
             setEditingMovie(null);
-            fetchMovies(pageSize, pageNum, [], "").then((data) => setMovies(data.movies));
+            fetchMovies(pageSize, pageNum, filters.genres, filters.title).then((data) => setMovies(data.movies));
           }}
           onCancel={() => setEditingMovie(null)}
         />
@@ -118,6 +104,7 @@ const AdminMoviesPage = () => {
             <th>Director</th>
             <th>Cast</th>
             <th>Year</th>
+            <th>Rating</th>
             <th>Genres</th>
             <th></th>
           </tr>
@@ -131,6 +118,7 @@ const AdminMoviesPage = () => {
               <td>{m.director}</td>
               <td>{m.cast}</td>
               <td>{m.release_year}</td>
+              <td>{m.rating}</td>
               <td>{m.genres}</td>
               <td>
                 <button
