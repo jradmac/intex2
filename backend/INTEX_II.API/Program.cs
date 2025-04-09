@@ -67,6 +67,9 @@ builder.Services.AddDbContext<RatingDbContext>(options =>
 builder.Services.Configure<StytchConfig>(
     builder.Configuration.GetSection(StytchConfig.SectionName));
 
+// Register Recommendation service
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
 // Register HttpClient for Stytch service
 builder.Services.AddHttpClient<IStytchService, StytchService>();
 
@@ -143,7 +146,7 @@ builder.Services.AddCors(options =>
         builder.WithOrigins("http://localhost:3501")  // Frontend URL
                .AllowAnyMethod()
                .AllowAnyHeader()
-               .AllowCredentials();
+               .WithExposedHeaders("Token-Expired"); // Only expose headers you need
     });
 });
 

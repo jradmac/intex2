@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+
+// File: /frontend/src/pages/HomePage.tsx
+import React, { useState, useEffect } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import logo from '../images/CineNicheLogo.png';
-import MovieList from '../components/MovieLIst';
 import { logout } from '../components/AuthAPI';
+import { fetchAllRecommendations, MovieRecommendation } from '../api/RecommendationAPI';
+import RecommendationCategory from '../components/RecommendationCategory';
+import { useNavigate, Navigate } from 'react-router-dom';
+import MovieList from '../components/MovieLIst';
 import SearchOverlay from '../components/SearchOverly'; 
+
 
 interface UserData {
   userId: string;
@@ -21,13 +26,33 @@ interface UserData {
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [recommendations, setRecommendations] = useState<Record<string, MovieRecommendation[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
+  
+  // Add separate state for recommendation types
+  const [collaborativeRecs, setCollaborativeRecs] = useState<MovieRecommendation[]>([]);
+  const [contentBasedRecs, setContentBasedRecs] = useState<Record<string, MovieRecommendation[]>>({});
 
-  const token = localStorage.getItem('authToken');
-  const userDataStr = localStorage.getItem('userData');
-
+  useEffect(() => {
+ 
+    const token = localStorage.getItem('authToken');
+    const userDataStr = localStorage.getItem('userData');
+    if (!token || !userDataStr) {
+      navigate('/login');
+      return;
+    }
+    try {
+      const parsedUserData = JSON.parse(userDataStr);
+      setUserData(parsedUserData);
+    } catch (error) {
+      localStorage.clear();
+      navigate('/login');
+    }
+  }, [navigate]);
+      
   useEffect(() => {
     try {
       const parsedUserData = JSON.parse(userDataStr || '');
@@ -37,6 +62,41 @@ const HomePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+
+  useEffect(() => {
+    const loadRecommendations = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAllRecommendations(10);
+        console.log("Fetched recommendations:", data); // Log for debugging
+        
+        setRecommendations(data);
+        
+        // Separate recommendations by type
+        if (data["For You"]) {
+          setCollaborativeRecs(data["For You"]);
+        }
+        
+        // Get all content-based recommendations (all categories except "For You")
+        const contentBased: Record<string, MovieRecommendation[]> = {};
+        Object.keys(data).forEach(category => {
+          if (category !== "For You") {
+            contentBased[category] = data[category];
+          }
+        });
+        setContentBasedRecs(contentBased);
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching recommendations:', err);
+        setError('Failed to load recommendations. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecommendations();
+
   }, []);
 
   const handleLogout = async () => {
@@ -65,7 +125,9 @@ const HomePage: React.FC = () => {
         <Header>
           <LogoImg src={logo} alt="CineNiche Logo" onClick={() => navigate('/home')} />
           <HeaderRight>
+
             <SearchButton onClick={() => setShowSearchOverlay(true)}>Search</SearchButton>
+
             {userData && <WelcomeText>Welcome, {userData.firstName}!</WelcomeText>}
             <LogoutButton onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? 'Logging Out...' : 'Logout'}
@@ -75,20 +137,100 @@ const HomePage: React.FC = () => {
 
         <HeroSection>
           <HeroContent>
-            <HeroTitle>Watch Patman Now</HeroTitle>
+            <HeroTitle>Personalized Movie Recommendations</HeroTitle>
             <HeroDescription>
-              Forever alone in a crowd, failed comedian Arthur Fleck seeks connection as he walks the streets of Gotham City...
+              Discover your next favorite films based on your preferences and similar viewers.
             </HeroDescription>
-            <PlayButton>Play</PlayButton>
+            <PlayButton onClick={() => navigate('/profile')}>Update Profile</PlayButton>
           </HeroContent>
         </HeroSection>
 
-        <Section>
-          <SectionHeader>
-            <SectionTitle>Featured Movies</SectionTitle>
-          </SectionHeader>
-          <MovieList />
-        </Section>
+        <MainContent>
+          {error ? (
+            <ErrorMessage>{error}</ErrorMessage>
+          ) : (
+            <>
+              {/* COLLABORATIVE FILTERING SECTION */}
+              <RecommendationWrapper>
+                <SectionTitle>Collaborative Filtering Recommendations</SectionTitle>
+                
+                {collaborativeRecs.length > 0 ? (
+                  <RecommendationBox>
+                    <RecommendationDescription>
+                      Personalized recommendations based on your demographic profile
+                    </RecommendationDescription>
+                    <RecommendationCategory
+                      title="For You"
+                      recommendations={collaborativeRecs}
+                      loading={false}
+                    />
+                  </RecommendationBox>
+                ) : (
+                  <RecommendationBox>
+                    <div style={{ textAlign: 'center' }}>
+                      <EmptyStateText>
+                        No personalized recommendations found. 
+                        This could be due to:
+                      </EmptyStateText>
+                      <EmptyStateList>
+                        <EmptyStateListItem>Your profile needs age and gender information</EmptyStateListItem>
+                        <EmptyStateListItem>No recommendations match your demographic profile</EmptyStateListItem>
+                        <EmptyStateListItem>Demographic data format mismatch</EmptyStateListItem>
+                      </EmptyStateList>
+                      <PlayButton onClick={() => navigate('/profile')}>
+                        Update Profile
+                      </PlayButton>
+                    </div>
+                  </RecommendationBox>
+                )}
+              </RecommendationWrapper>
+              
+              {/* CONTENT-BASED FILTERING SECTION */}
+              <RecommendationWrapper>
+                <SectionTitle>Content-Based Recommendations</SectionTitle>
+                
+                {Object.keys(contentBasedRecs).length > 0 ? (
+                  <RecommendationBox>
+                    <RecommendationDescription>
+                      Recommendations based on genres and content categories
+                    </RecommendationDescription>
+                    <div style={{ marginTop: '20px' }}>
+                      {Object.keys(contentBasedRecs).map(category => (
+                        <div key={category} style={{ marginBottom: '40px' }}>
+                          <RecommendationCategory
+                            title={category}
+                            recommendations={contentBasedRecs[category] || []}
+                            loading={false}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </RecommendationBox>
+                ) : (
+                  <RecommendationBox>
+                    <div style={{ textAlign: 'center' }}>
+                      <EmptyStateText>
+                        No content-based recommendations found.
+                      </EmptyStateText>
+                    </div>
+                  </RecommendationBox>
+                )}
+              </RecommendationWrapper>
+            </>
+          )}
+          
+          {!loading && Object.keys(recommendations).length === 0 && (
+            <EmptyStateContainer>
+              <EmptyStateText>
+                No recommendations of any kind found. The recommendation service might be unavailable.
+              </EmptyStateText>
+              <PlayButton onClick={() => navigate('/profile')}>
+                Update Profile
+              </PlayButton>
+            </EmptyStateContainer>
+          )}
+        </MainContent>
+
 
         <Footer>
           &copy; {new Date().getFullYear()} CineNiche. All rights reserved.
@@ -98,13 +240,12 @@ const HomePage: React.FC = () => {
       {showSearchOverlay && (
         <SearchOverlay onClose={() => setShowSearchOverlay(false)} />
       )}
+
     </>
   );
 };
 
 export default HomePage;
-
-// ==================== Styled Components ====================
 
 const GlobalStyle = createGlobalStyle`
   *, *::before, *::after {
@@ -121,6 +262,23 @@ const GlobalStyle = createGlobalStyle`
     background-color: #141414;
     color: #fff;
   }
+  
+  /* Hide scrollbar but keep functionality */
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+  
+  /* For Firefox */
+  * {
+    scrollbar-width: none;
+  }
+  
+  /* For IE and Edge */
+  body {
+    -ms-overflow-style: none;
+  }
+
 `;
 
 const PageWrapper = styled.div`
@@ -137,7 +295,14 @@ const Header = styled.header`
   align-items: center;
   padding: 20px 40px;
   background-color: #141414;
+
+  color: #fff;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+
   width: 100vw;
+
   box-sizing: border-box;
 `;
 
@@ -170,6 +335,19 @@ const LogoutButton = styled.button`
   }
 `;
 
+
+const HeroSection = styled.section`
+  background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                   url('https://wallpaperaccess.com/full/329583.jpg');
+  background-size: cover;
+  background-position: center;
+  height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 60px;
+  width: 100%;
+
 const SearchButton = styled.button`
   background: transparent;
   color: white;
@@ -194,6 +372,7 @@ const HeroSection = styled.section`
   justify-content: flex-start;
   padding: 0 60px;
   width: 100vw;
+
   box-sizing: border-box;
 `;
 
@@ -228,6 +407,21 @@ const PlayButton = styled.button`
   }
 `;
 
+const MainContent = styled.main`
+  padding: 40px 60px;
+  background-color: #141414;
+  color: #fff;
+  max-width: 1400px;
+  margin: 0 auto;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e50914;
+  display: inline-block;
+
 const Section = styled.section`
   padding: 40px 60px;
   background-color: #141414;
@@ -243,6 +437,7 @@ const SectionHeader = styled.div`
 
 const SectionTitle = styled.h3`
   font-size: 1.5rem;
+
 `;
 
 const Footer = styled.footer`
@@ -250,6 +445,9 @@ const Footer = styled.footer`
   padding: 20px;
   background-color: #141414;
   color: #fff;
+
+  margin-top: auto;
+
 `;
 
 const LoadingScreen = styled.div`
@@ -270,4 +468,57 @@ const LogoImg = styled.img`
   @media (max-width: 600px) {
     height: 30px;
   }
+`;
+
+// Recommendation styling
+const RecommendationWrapper = styled.div`
+  margin-bottom: 60px;
+`;
+
+const RecommendationBox = styled.div`
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 10px;
+`;
+
+const RecommendationDescription = styled.p`
+  color: #ccc;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+`;
+
+// Empty state styling
+const EmptyStateContainer = styled.div`
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  margin-top: 20px;
+`;
+
+const EmptyStateText = styled.p`
+  color: #ccc;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+`;
+
+const EmptyStateList = styled.ul`
+  text-align: left;
+  max-width: 500px;
+  margin: 0 auto 20px auto;
+  padding-left: 20px;
+`;
+
+const EmptyStateListItem = styled.li`
+  color: #aaa;
+  margin-bottom: 8px;
+`;
+
+const ErrorMessage = styled.div`
+  background-color: rgba(229, 9, 20, 0.2);
+  color: #f88;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
 `;

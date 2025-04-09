@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+// File: /backend/CineNiche.API/Data/MovieDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using CineNiche.API.Models;
 
@@ -6,19 +6,32 @@ namespace Mission11.API.Data
 {
     public class MovieDbContext : DbContext
     {
-        public MovieDbContext(DbContextOptions<MovieDbContext> options) : base(options)
-        {
-        }
-
-        // DbSet property mapping to the movies_titles table
+        public MovieDbContext(DbContextOptions<MovieDbContext> options) : base(options) { }
+        
         public DbSet<Movie> Movies { get; set; }
-
+        
+        // Add the new DbSet for MovieRecommendations
+        public DbSet<MovieRecommendation> MovieRecommendations { get; set; }
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Map the Movie entity to the 'movies_titles' table in the database
-            modelBuilder.Entity<Movie>().ToTable("movies_titles");
-
             base.OnModelCreating(modelBuilder);
+            
+            // Configure MovieRecommendation entity
+            modelBuilder.Entity<MovieRecommendation>(entity =>
+            {
+                entity.ToTable("movieRecommendations");
+                
+                // Configure the composite primary key
+                entity.HasKey(e => new { e.demographic_segment, e.show_id });
+                
+                // Match column names exactly, especially for created-at with hyphen
+                entity.Property(e => e.created_at)
+                      .HasColumnName("created_at");
+            });
+            
+            // Configure Movie entity to use the correct table name
+            modelBuilder.Entity<Movie>().ToTable("movies_titles");
         }
     }
 }

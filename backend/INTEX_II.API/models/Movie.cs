@@ -18,5 +18,6 @@ namespace CineNiche.API.Models
         public string? description { get; set; }
 
         public string? genres { get; set; }
+        public string? posterUrl {get; set;}
     }
 }
