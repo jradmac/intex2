@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { fetchMovies } from '../api/MovieAPI';
 import { Movie } from '../types/Movie';
+import { Link } from 'react-router-dom';
 
 const MovieList: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -54,7 +55,8 @@ const MovieList: React.FC = () => {
           <GenreTitle>{genre}</GenreTitle>
           <MovieGrid>
             {movies.map(movie => (
-              <MovieCard key={movie.show_id}>
+              <Link to={`/movies/${movie.show_id}`} key={movie.show_id} style={{ textDecoration: 'none' }}>
+              <MovieCard>
                 <Poster />
                 <MovieInfo>
                   <MovieTitle>{movie.title || 'Untitled'}</MovieTitle>
@@ -62,6 +64,7 @@ const MovieList: React.FC = () => {
                   <MovieMeta>{movie.rating} • {movie.duration}</MovieMeta>
                 </MovieInfo>
               </MovieCard>
+            </Link>
             ))}
           </MovieGrid>
         </GenreSection>

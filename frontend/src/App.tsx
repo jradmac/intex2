@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import AdminMoviesPage from './pages/AdminMoviesPage';
+import MovieDetailPage from './pages/MovieDetailPage';
 
 // Debug component to show when no routes match
 const NotFoundDebug = () => {
@@ -94,6 +95,9 @@ function App() {
 
           {/* Root path redirects to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/*Route for individual movie details page*/}
+          <Route path="/movies/:show_id" element={<MovieDetailPage />} />
 
           {/* Catch-all route for debugging */}
           <Route path="*" element={<NotFoundDebug />} />
