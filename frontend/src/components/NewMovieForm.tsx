@@ -12,15 +12,16 @@ const NewMovieForm = ({ onSuccess, onCancel }: NewMovieFormProps) => {
   const [formData, setFormData] = useState<Movie>({
     show_id: `new-${Date.now()}`,
     title: "",
-    type: "",
+    type: "Movie",
     director: "",
     cast: "",
     country: "",
     release_year: new Date().getFullYear(),
-    rating: "",
+    rating: "PG-13",
     duration: "",
     description: "",
-    genres: ""
+    genres: "",
+    posterUrl: ""  // Add this line
   });
 
   const [genreOptions, setGenreOptions] = useState<string[]>([]);

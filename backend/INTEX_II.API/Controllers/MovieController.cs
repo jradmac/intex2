@@ -2,8 +2,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Mission11.API.Data;
 using CineNiche.API.Models;
+using CineNiche.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using FuzzySharp;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Mission11.API.Controllers
 {
@@ -12,10 +17,12 @@ namespace Mission11.API.Controllers
     public class MovieController : ControllerBase
     {
         private readonly MovieDbContext _movieContext;
+        private readonly ISimilarMovieService _similarMovieService;
 
-        public MovieController(MovieDbContext temp)
+        public MovieController(MovieDbContext temp, ISimilarMovieService similarMovieService)
         {
             _movieContext = temp;
+            _similarMovieService = similarMovieService;
         }
 
         [HttpGet("GetMovies")]
@@ -166,6 +173,20 @@ namespace Mission11.API.Controllers
                 .ToList();
 
             return Ok(genres);
+        }
+
+        [HttpGet("GetSimilarMovies/{show_id}")]
+        public async Task<IActionResult> GetSimilarMovies(string show_id, [FromQuery] int limit = 10)
+        {
+            try
+            {
+                var similarMovies = await _similarMovieService.GetSimilarMoviesAsync(show_id, limit);
+                return Ok(similarMovies);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error getting similar movies: {ex.Message}" });
+            }
         }
 
         [HttpPost("AddMovie")]

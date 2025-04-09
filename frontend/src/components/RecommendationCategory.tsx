@@ -76,7 +76,14 @@ const RecommendationCategory: React.FC<RecommendationCategoryProps> = ({
             >
               <MoviePoster $hasImage={!!movie.posterUrl}>
                 {movie.posterUrl ? (
-                  <PosterImage src={movie.posterUrl} alt={movie.title} />
+                  <PosterImage 
+                    src={movie.posterUrl} 
+                    alt={movie.title} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null; // Prevent infinite loops
+                      e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder image
+                    }}
+                  />
                 ) : (
                   <MoviePosterTitle>{movie.title}</MoviePosterTitle>
                 )}
@@ -107,7 +114,14 @@ const RecommendationCategory: React.FC<RecommendationCategoryProps> = ({
             >
               <MoviePoster $hasImage={!!movie.posterUrl}>
                 {movie.posterUrl ? (
-                  <PosterImage src={movie.posterUrl} alt={movie.title} />
+                  <PosterImage 
+                    src={movie.posterUrl} 
+                    alt={movie.title} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null; // Prevent infinite loops
+                      e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder image
+                    }}
+                  />
                 ) : (
                   <MoviePosterTitle>{movie.title}</MoviePosterTitle>
                 )}
@@ -135,6 +149,7 @@ const RecommendationCategory: React.FC<RecommendationCategoryProps> = ({
         <MovieDetailsModal 
           movie={selectedMovie} 
           onClose={handleCloseModal} 
+          onSelectMovie={handleMovieClick} // Added to handle clicking similar movies
         />
       )}
     </CategoryWrapper>

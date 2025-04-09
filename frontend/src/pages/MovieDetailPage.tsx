@@ -17,16 +17,17 @@ const MovieDetailPage: React.FC = () => {
         .then((data) => {
           setMovie(data);
           const fakeMovies: Movie[] = Array.from({ length: 10 }, (_, i) => ({
-            show_id: `rec${i}`,
-            title: `Recommended Movie ${i + 1}`,
-            rating: 'PG-13',
-            release_year: 2020 + i,
-            duration: '1h 45m',
-            description: 'Placeholder movie description.',
-            director: 'Someone Cool',
-            genres: 'Action, Thriller',
-            cast: '',
-            type: 'Movie'
+            show_id: `fake-${i}`,
+            title: `Similar Movie ${i + 1}`,
+            rating: "PG-13",
+            release_year: 2023 - i,
+            duration: "120 min",
+            description: "A description of a similar movie",
+            director: "Director Name",
+            genres: "Action, Adventure",
+            cast: "Actor 1, Actor 2",
+            type: "Movie",
+            posterUrl: undefined  // Add this line
           }));
           setRecommendations(fakeMovies);
         })
