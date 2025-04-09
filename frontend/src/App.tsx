@@ -6,10 +6,10 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import AdminMoviesPage from './pages/AdminMoviesPage';
+import MovieDetailPage from './pages/MovieDetailPage';
 
 // Debug component to show when no routes match
 const NotFoundDebug = () => {
-  // Get all localStorage entries
   const localStorageEntries = Object.keys(localStorage).reduce((acc: Record<string, string>, key) => {
     const value = localStorage.getItem(key);
     if (value) {
@@ -34,59 +34,38 @@ const NotFoundDebug = () => {
   );
 };
 
-// Auth guard component
+// ✅ Updated ProtectedRoute – no more useState/useEffect
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  
-  useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('authToken');
-    const userDataStr = localStorage.getItem('userData');
-    const isLoggedIn = Boolean(token && userDataStr);
-    
-    setIsAuthenticated(isLoggedIn);
-  }, []);
-  
-  // Show loading while checking auth status
-  if (isAuthenticated === null) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-  
-  // Redirect to login if not authenticated
+  const token = localStorage.getItem('authToken');
+  const userDataStr = localStorage.getItem('userData');
+  const isAuthenticated = Boolean(token && userDataStr);
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
-  // Render children if authenticated
+
   return <>{children}</>;
 };
 
 function App() {
-  // Avoid checking login status during render
-  // Using useState and useEffect instead
-  const [authStatus, setAuthStatus] = useState<{
-    isChecking: boolean;
-    isLoggedIn: boolean;
-  }>({
+  const [authStatus, setAuthStatus] = useState({
     isChecking: true,
     isLoggedIn: false
   });
-  
+
   useEffect(() => {
-    // Check auth status on component mount
     const token = localStorage.getItem('authToken');
     const userDataStr = localStorage.getItem('userData');
     const isLoggedIn = Boolean(token && userDataStr);
-    
+
     setAuthStatus({
       isChecking: false,
       isLoggedIn
     });
-    
+
     console.log('App: Auth status -', { isLoggedIn });
   }, []);
 
-  // Show loading while checking auth status
   if (authStatus.isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -104,19 +83,22 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           
           {/* Protected routes */}
-          <Route path="/home" element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/adminMoviesPage" element={<AdminMoviesPage />} />
 
-          <Route path = '/adminMoviesPage' element ={<AdminMoviesPage />} />
-          
           {/* Root path redirects to login */}
-          <Route path="/" element={
-            <Navigate to="/login" replace />
-          } />
-          
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/*Route for individual movie details page*/}
+          <Route path="/movies/:show_id" element={<MovieDetailPage />} />
+
           {/* Catch-all route for debugging */}
           <Route path="*" element={<NotFoundDebug />} />
         </Routes>

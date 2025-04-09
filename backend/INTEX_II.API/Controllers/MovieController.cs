@@ -11,120 +11,161 @@ namespace Mission11.API.Controllers
     [ApiController]
     public class MovieController : ControllerBase
     {
-        private MovieDbContext _movieContext;
+        private readonly MovieDbContext _movieContext;
+
         public MovieController(MovieDbContext temp)
         {
             _movieContext = temp;
         }
 
-    [HttpGet("GetMovies")]
-public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery = "", [FromQuery] List<string>? genres = null)
-{
-    var allMovies = _movieContext.Movies.ToList();
-
-    IEnumerable<Movie> filteredMovies = allMovies;
-
-    // 🎯 Genre filter
-    if (genres != null && genres.Any())
-    {
-        filteredMovies = filteredMovies.Where(m =>
-            !string.IsNullOrEmpty(m.genres) &&
-            genres.Any(g => m.genres.Contains(g, StringComparison.OrdinalIgnoreCase))
-        );
-    }
-
-    // 🔍 Fuzzy Search Matching
-    if (!string.IsNullOrWhiteSpace(searchQuery))
-    {
-        var searchLower = searchQuery.ToLower();
-
-        var scored = filteredMovies
-            .Select(movie =>
-            {
-                string title = movie.title?.ToLower() ?? "";
-                string desc = movie.description?.ToLower() ?? "";
-                string cast = movie.cast?.ToLower() ?? "";
-
-                int ratioScore = Fuzz.Ratio(searchLower, title);
-                int partialScore = Fuzz.PartialRatio(searchLower, title);
-                int descScore = Fuzz.PartialRatio(searchLower, desc);
-                int castScore = Fuzz.PartialRatio(searchLower, cast);
-
-                // 🪄 Custom prefix bonus
-                int prefixBonus = 0;
-                if (title.StartsWith(searchLower)) prefixBonus += 30;
-                else if (title.Length >= 5 && searchLower.Length >= 3 &&
-                        title.Substring(0, Math.Min(5, title.Length)).StartsWith(searchLower.Substring(0, 3)))
-                {
-                    prefixBonus += 15;
-                }
-
-                int finalScore = Math.Max(ratioScore, partialScore);
-                finalScore = Math.Max(finalScore, Math.Max(descScore, castScore));
-                finalScore += prefixBonus;
-
-                return new
-                {
-                    Movie = movie,
-                    Score = finalScore
-                };
-            })
-            .OrderByDescending(x => x.Score)
-            .ToList();
-
-
-        // Always return at least one full page (even if low similarity)
-        filteredMovies = scored
-            .Where(x => x.Score > 40) // minimum match threshold
-            .DefaultIfEmpty(scored.First()) // fallback to best match
-            .Select(x => x.Movie);
-    }
-
-    var totalNumMovies = filteredMovies.Count();
-
-    var pagedMovies = filteredMovies
-        .Skip((pageNum - 1) * pageSize)
-        .Take(pageSize)
-        .Select(m => new
+        [HttpGet("GetMovies")]
+        public IActionResult GetMovies(
+            int pageSize = 10,
+            int pageNum = 1,
+            string? searchQuery = "",
+            string? director = "",
+            int? minYear = null,
+            int? maxYear = null,
+            [FromQuery] List<string>? genres = null,
+            [FromQuery] List<string>? ratings = null)
         {
-            show_id = m.show_id,
-            type = m.type,
-            title = m.title,
-            director = m.director,
-            cast = m.cast,
-            country = m.country,
-            release_year = m.release_year,
-            rating = m.rating,
-            duration = m.duration,
-            description = m.description,
-            genres = m.genres,
-            posterUrl = m.posterUrl // Added poster URL
-        })
-        .ToList();
+            var allMovies = _movieContext.Movies.ToList();
+            IEnumerable<Movie> filtered = allMovies;
 
-    var result = new
-    {
-        Movies = pagedMovies,
-        TotalNumMovies = totalNumMovies
-    };
+            // Genre filter
+            if (genres != null && genres.Any())
+            {
+                filtered = filtered.Where(m =>
+                    !string.IsNullOrEmpty(m.genres) &&
+                    genres.Any(g => m.genres.Contains(g, StringComparison.OrdinalIgnoreCase)));
+            }
 
-    return Ok(result);
-}
+            // Rating filter
+            if (ratings != null && ratings.Any())
+            {
+                filtered = filtered.Where(m =>
+                    !string.IsNullOrEmpty(m.rating) &&
+                    ratings.Contains(m.rating, StringComparer.OrdinalIgnoreCase));
+            }
 
+            // Year range filter
+            if (minYear.HasValue)
+                filtered = filtered.Where(m => m.release_year >= minYear);
+            if (maxYear.HasValue)
+                filtered = filtered.Where(m => m.release_year <= maxYear);
+
+            var searchFiltered = filtered.ToList();
+            var directorFiltered = filtered.ToList();
+
+            // Fuzzy search on title, description, cast
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var query = searchQuery.ToLower();
+                var scored = searchFiltered.Select(m =>
+                {
+                    var title = m.title?.ToLower() ?? "";
+                    var desc = m.description?.ToLower() ?? "";
+                    var cast = m.cast?.ToLower() ?? "";
+
+                    int score = new[]
+                    {
+                        Fuzz.Ratio(query, title),
+                        Fuzz.PartialRatio(query, title),
+                        Fuzz.PartialRatio(query, desc),
+                        Fuzz.PartialRatio(query, cast)
+                    }.Max();
+
+                    int bonus = title.StartsWith(query) ? 100 :
+                                (title.Length >= 5 && query.Length >= 3 &&
+                                title.Substring(0, Math.Min(5, title.Length))
+                                      .StartsWith(query.Substring(0, 3))) ? 30 : 0;
+
+                    return new { Movie = m, Score = score + bonus };
+                })
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+                int threshold = query.Length <= 2 ? 0 : 40;
+                searchFiltered = scored
+                    .Where(x => x.Score > threshold)
+                    .DefaultIfEmpty(scored.First())
+                    .Select(x => x.Movie)
+                    .ToList();
+            }
+
+            // Fuzzy match on director
+            if (!string.IsNullOrWhiteSpace(director))
+            {
+                var query = director.ToLower();
+                var scored = directorFiltered.Select(m =>
+                {
+                    var dir = m.director?.ToLower() ?? "";
+                    int score = Fuzz.PartialRatio(query, dir);
+                    return new { Movie = m, Score = score };
+                })
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+                directorFiltered = scored
+                    .Where(x => x.Score > 40)
+                    .DefaultIfEmpty(scored.First())
+                    .Select(x => x.Movie)
+                    .ToList();
+            }
+
+            // Combine filters
+            if (!string.IsNullOrWhiteSpace(searchQuery) && !string.IsNullOrWhiteSpace(director))
+                filtered = searchFiltered.Intersect(directorFiltered);
+            else if (!string.IsNullOrWhiteSpace(searchQuery))
+                filtered = searchFiltered;
+            else if (!string.IsNullOrWhiteSpace(director))
+                filtered = directorFiltered;
+
+            var total = filtered.Count();
+
+            var movies = filtered
+                .Skip((pageNum - 1) * pageSize)
+                .Take(pageSize)
+                .Select(m => new
+                {
+                    m.show_id,
+                    m.type,
+                    m.title,
+                    m.director,
+                    m.cast,
+                    m.country,
+                    m.release_year,
+                    m.rating,
+                    m.duration,
+                    m.description,
+                    m.genres,
+                    m.posterUrl
+                })
+                .ToList();
+
+            return Ok(new { Movies = movies, TotalNumMovies = total });
+        }
+
+        [HttpGet("{show_id}")]
+        public IActionResult GetMovieById(string show_id)
+        {
+            var movie = _movieContext.Movies.Find(show_id);
+            return movie != null ? Ok(movie) : NotFound(new { message = "Movie not found" });
+        }
 
         [HttpGet("GetGenres")]
         public IActionResult GetGenres()
         {
-            var genreList = _movieContext.Movies
+            var genres = _movieContext.Movies
                 .Where(m => m.genres != null)
                 .AsEnumerable()
-                .SelectMany(m => m.genres.Split(new[] { ',' }, StringSplitOptions.None))
+                .SelectMany(m => m.genres.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 .Select(g => g.Trim())
                 .Distinct()
                 .OrderBy(g => g)
                 .ToList();
 
-            return Ok(genreList);
+            return Ok(genres);
         }
 
         [HttpPost("AddMovie")]
@@ -138,30 +179,25 @@ public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery
 
         [HttpPut("UpdateMovie/{show_id}")]
         [Authorize(Policy = "AdminOnly")]
-        public IActionResult UpdateMovie(string show_id, [FromBody] Movie updatedMovie)
+        public IActionResult UpdateMovie(string show_id, [FromBody] Movie updated)
         {
-            var existingMovie = _movieContext.Movies.Find(show_id);
-            if (existingMovie == null)
-            {
-                return NotFound();
-            }
+            var movie = _movieContext.Movies.Find(show_id);
+            if (movie == null) return NotFound();
 
-            // Basic fields
-            existingMovie.type = updatedMovie.type;
-            existingMovie.title = updatedMovie.title;
-            existingMovie.director = updatedMovie.director;
-            existingMovie.cast = updatedMovie.cast;
-            existingMovie.country = updatedMovie.country;
-            existingMovie.release_year = updatedMovie.release_year;
-            existingMovie.rating = updatedMovie.rating;
-            existingMovie.duration = updatedMovie.duration;
-            existingMovie.description = updatedMovie.description;
-            existingMovie.genres = updatedMovie.genres;
+            movie.type = updated.type;
+            movie.title = updated.title;
+            movie.director = updated.director;
+            movie.cast = updated.cast;
+            movie.country = updated.country;
+            movie.release_year = updated.release_year;
+            movie.rating = updated.rating;
+            movie.duration = updated.duration;
+            movie.description = updated.description;
+            movie.genres = updated.genres;
+            movie.posterUrl = updated.posterUrl;
 
-            _movieContext.Movies.Update(existingMovie);
             _movieContext.SaveChanges();
-
-            return Ok(existingMovie);
+            return Ok(movie);
         }
 
         [HttpDelete("DeleteMovie/{show_id}")]
@@ -169,15 +205,10 @@ public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery
         public IActionResult DeleteMovie(string show_id)
         {
             var movie = _movieContext.Movies.Find(show_id);
-
-            if (movie == null)
-            {
-                return NotFound(new { message = "Movie not found" });
-            }
+            if (movie == null) return NotFound(new { message = "Movie not found" });
 
             _movieContext.Movies.Remove(movie);
             _movieContext.SaveChanges();
-
             return NoContent();
         }
     }

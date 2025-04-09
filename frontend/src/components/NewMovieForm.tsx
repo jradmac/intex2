@@ -32,7 +32,7 @@ const NewMovieForm = ({ onSuccess, onCancel }: NewMovieFormProps) => {
       try {
         const response = await fetch("https://localhost:5002/api/Movie/GetGenres");
         const data = await response.json();
-        setGenreOptions(data);
+        setGenreOptions(data.filter((genre: string) => genre.trim() !== ""));
       } catch (err) {
         console.error("Failed to fetch genres:", err);
       }

@@ -1,11 +1,15 @@
+
 // File: /frontend/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import logo from '../images/CineNicheLogo.png';
 import { logout } from '../components/AuthAPI';
 import { fetchAllRecommendations, MovieRecommendation } from '../api/RecommendationAPI';
 import RecommendationCategory from '../components/RecommendationCategory';
+import { useNavigate, Navigate } from 'react-router-dom';
+import MovieList from '../components/MovieLIst';
+import SearchOverlay from '../components/SearchOverly'; 
+
 
 interface UserData {
   userId: string;
@@ -26,13 +30,15 @@ const HomePage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Record<string, MovieRecommendation[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   
   // Add separate state for recommendation types
   const [collaborativeRecs, setCollaborativeRecs] = useState<MovieRecommendation[]>([]);
   const [contentBasedRecs, setContentBasedRecs] = useState<Record<string, MovieRecommendation[]>>({});
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+ 
+    const token = localStorage.getItem('authToken');
     const userDataStr = localStorage.getItem('userData');
     if (!token || !userDataStr) {
       navigate('/login');
@@ -46,6 +52,16 @@ const HomePage: React.FC = () => {
       navigate('/login');
     }
   }, [navigate]);
+      
+  useEffect(() => {
+    try {
+      const parsedUserData = JSON.parse(userDataStr || '');
+      setUserData(parsedUserData);
+    } catch (error) {
+      localStorage.clear();
+    } finally {
+      setLoading(false);
+    }
 
   useEffect(() => {
     const loadRecommendations = async () => {
@@ -80,6 +96,7 @@ const HomePage: React.FC = () => {
     };
 
     loadRecommendations();
+
   }, []);
 
   const handleLogout = async () => {
@@ -97,6 +114,10 @@ const HomePage: React.FC = () => {
 
   if (loading) return <LoadingScreen>Loading...</LoadingScreen>;
 
+  if (!token || !userDataStr) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <>
       <GlobalStyle />
@@ -104,6 +125,9 @@ const HomePage: React.FC = () => {
         <Header>
           <LogoImg src={logo} alt="CineNiche Logo" onClick={() => navigate('/home')} />
           <HeaderRight>
+
+            <SearchButton onClick={() => setShowSearchOverlay(true)}>Search</SearchButton>
+
             {userData && <WelcomeText>Welcome, {userData.firstName}!</WelcomeText>}
             <LogoutButton onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? 'Logging Out...' : 'Logout'}
@@ -207,10 +231,16 @@ const HomePage: React.FC = () => {
           )}
         </MainContent>
 
+
         <Footer>
           &copy; {new Date().getFullYear()} CineNiche. All rights reserved.
         </Footer>
       </PageWrapper>
+
+      {showSearchOverlay && (
+        <SearchOverlay onClose={() => setShowSearchOverlay(false)} />
+      )}
+
     </>
   );
 };
@@ -248,6 +278,7 @@ const GlobalStyle = createGlobalStyle`
   body {
     -ms-overflow-style: none;
   }
+
 `;
 
 const PageWrapper = styled.div`
@@ -264,10 +295,14 @@ const Header = styled.header`
   align-items: center;
   padding: 20px 40px;
   background-color: #141414;
+
   color: #fff;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+
+  width: 100vw;
+
   box-sizing: border-box;
 `;
 
@@ -300,6 +335,7 @@ const LogoutButton = styled.button`
   }
 `;
 
+
 const HeroSection = styled.section`
   background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
                    url('https://wallpaperaccess.com/full/329583.jpg');
@@ -311,6 +347,32 @@ const HeroSection = styled.section`
   justify-content: center;
   padding: 0 60px;
   width: 100%;
+
+const SearchButton = styled.button`
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &:hover {
+    background: #333;
+  }
+`;
+
+const HeroSection = styled.section`
+  background-image: url('https://wallpaperaccess.com/full/329583.jpg');
+  background-size: cover;
+  background-position: center;
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 60px;
+  width: 100vw;
+
   box-sizing: border-box;
 `;
 
@@ -359,6 +421,23 @@ const SectionTitle = styled.h3`
   padding-bottom: 10px;
   border-bottom: 2px solid #e50914;
   display: inline-block;
+
+const Section = styled.section`
+  padding: 40px 60px;
+  background-color: #141414;
+  color: #fff;
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1.5rem;
+
 `;
 
 const Footer = styled.footer`
@@ -366,7 +445,9 @@ const Footer = styled.footer`
   padding: 20px;
   background-color: #141414;
   color: #fff;
+
   margin-top: auto;
+
 `;
 
 const LoadingScreen = styled.div`

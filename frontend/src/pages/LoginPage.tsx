@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import axios from 'axios';
-import bgImage from '../images/WelcomePageBanner.png'; // adjust path as needed
+import bgImage from '../images/WelcomePageBanner.png';
 import logo from '../images/CineNicheLogo.png';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -11,7 +11,6 @@ const isValidPassword = (password: string): boolean => {
   return password.length >= 10;
 };
 
-// GLOBAL STYLES TO RESET SCROLL/GAPS
 const GlobalStyle = createGlobalStyle`
   *, *::before, *::after {
     box-sizing: border-box;
@@ -34,14 +33,15 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ Infinite loop fix
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
 
-    if (token && userData) {
-      navigate('/home');
+    if (token && userData && window.location.pathname !== '/home') {
+      navigate('/home', { replace: true });
     }
-  }, [navigate]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +87,6 @@ const LoginPage: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to your Stytch OAuth endpoint
     window.location.href = `${API_BASE_URL}/auth/oauth/google`;
   };
 
@@ -119,13 +118,13 @@ const LoginPage: React.FC = () => {
           <Button disabled={loading} type="submit">
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
-          
+
           <OrSeparator>
             <Line />
             <OrText>OR</OrText>
             <Line />
           </OrSeparator>
-          
+
           <OAuthButton type="button" onClick={handleGoogleLogin}>
             <GoogleIconSVG viewBox="0 0 24 24" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -135,7 +134,7 @@ const LoginPage: React.FC = () => {
             </GoogleIconSVG>
             Sign in with Google
           </OAuthButton>
-          
+
           <Text>
             New to CineNiche?{' '}
             <LinkText onClick={() => navigate('/register')}>
@@ -205,7 +204,7 @@ const Input = styled.input`
 `;
 
 const Button = styled.button`
-  background: #63b3d3; /* CineNiche blue */
+  background: #63b3d3;
   border-radius: 4px;
   font-size: 16px;
   font-weight: bold;
@@ -221,7 +220,7 @@ const Button = styled.button`
   }
 
   &:hover {
-    background-color: #519abb; /* slightly darker blue on hover */
+    background-color: #519abb;
   }
 `;
 
@@ -281,7 +280,7 @@ const LinkText = styled.span`
   text-decoration: underline;
 
   &:hover {
-    color: #519abb; /* optional darker hover tone */
+    color: #519abb;
   }
 `;
 
