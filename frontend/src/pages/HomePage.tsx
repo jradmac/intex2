@@ -13,7 +13,7 @@ interface UserData {
   profileCompleted?: boolean;
 }
 
-// Movie interface for the dummy data
+// Movie interface for the API data
 interface Movie {
   id: string;
   title: string;
@@ -22,46 +22,12 @@ interface Movie {
   posterUrl: string;
 }
 
-// Dummy movie data to display on the home page
-const DUMMY_MOVIES: Movie[] = [
-  {
-    id: "1",
-    title: "The Shawshank Redemption",
-    genre: "Drama",
-    year: 1994,
-    posterUrl: "https://via.placeholder.com/150x225"
-  },
-  {
-    id: "2",
-    title: "The Godfather",
-    genre: "Crime, Drama",
-    year: 1972,
-    posterUrl: "https://via.placeholder.com/150x225"
-  },
-  {
-    id: "3",
-    title: "Pulp Fiction",
-    genre: "Crime, Drama",
-    year: 1994,
-    posterUrl: "https://via.placeholder.com/150x225"
-  },
-  {
-    id: "4",
-    title: "The Dark Knight",
-    genre: "Action, Crime, Drama",
-    year: 2008,
-    posterUrl: "https://via.placeholder.com/150x225"
-  }
-];
-
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Define movies state - we'll use setMovies later when implementing 
-  // movie adding/filtering functionality
-  const [movies, /* setMovies */] = useState<Movie[]>(DUMMY_MOVIES);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -77,14 +43,71 @@ const HomePage: React.FC = () => {
     try {
       const parsedUserData = JSON.parse(userDataStr);
       setUserData(parsedUserData);
+      
+      // After confirming the user is logged in, fetch movies
+      fetchMovies(token);
     } catch (error) {
       console.error('HomePage: Error parsing user data', error);
       localStorage.clear();
       navigate('/login');
+    }
+  }, [navigate]);
+
+  // Function to fetch movies from the API
+  const fetchMovies = async (token: string) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/Movie/GetMovies', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('API response:', data);
+      
+      // Check if the response is an array
+      if (Array.isArray(data)) {
+        setMovies(data);
+      } 
+      // Check if the response has a data property that is an array
+      else if (data && Array.isArray(data.data)) {
+        setMovies(data.data);
+      }
+      // Check if the response has a result property that is an array
+      else if (data && Array.isArray(data.result)) {
+        setMovies(data.result);
+      }
+      // Handle other possible response structures
+      else if (typeof data === 'object') {
+        // Extract the first array property we find
+        const arrayProperty = Object.keys(data).find(key => Array.isArray(data[key]));
+        if (arrayProperty) {
+          setMovies(data[arrayProperty]);
+        } else {
+          console.error('Unexpected API response format:', data);
+          setFetchError('API returned data in an unexpected format');
+          setMovies([]);
+        }
+      } else {
+        console.error('Unexpected API response format:', data);
+        setFetchError('API returned data in an unexpected format');
+        setMovies([]);
+      }
+      
+      setFetchError(null);
+    } catch (error) {
+      console.error('Error fetching movies:', error);
+      setFetchError('Failed to load movies. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -96,17 +119,7 @@ const HomePage: React.FC = () => {
     // For now, we're just logging a message
     console.log('Add movie functionality will be implemented later');
     
-    // We'll uncomment and complete this implementation when ready:
-    // const newMovie = {
-    //   id: `${Date.now()}`,
-    //   title: "New Movie",
-    //   genre: "TBD",
-    //   year: 2023,
-    //   posterUrl: "https://via.placeholder.com/150x225"
-    // };
-    // When we're ready to implement this feature, we'll:
-    // 1. Uncomment the setMovies variable in the useState declaration
-    // 2. Implement the actual movie adding logic here
+    // We'll implement the actual movie adding logic here in the future
   };
 
   if (loading) {
@@ -179,22 +192,34 @@ const HomePage: React.FC = () => {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {movies.map(movie => (
-              <div key={movie.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <img 
-                  src={movie.posterUrl} 
-                  alt={`${movie.title} poster`}
-                  className="w-full h-60 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-bold text-lg mb-1">{movie.title}</h3>
-                  <p className="text-gray-600 text-sm">{movie.genre}</p>
-                  <p className="text-gray-600 text-sm">{movie.year}</p>
+          {fetchError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {fetchError}
+            </div>
+          )}
+          
+          {(!movies || movies.length === 0) && !fetchError ? (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">No movies available at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.isArray(movies) && movies.map(movie => (
+                <div key={movie.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <img 
+                    src={movie.posterUrl || "https://via.placeholder.com/150x225"} 
+                    alt={`${movie.title} poster`}
+                    className="w-full h-60 object-cover"
+                  />
+                  <div className="p-4">
+                    <h3 className="font-bold text-lg mb-1">{movie.title}</h3>
+                    <p className="text-gray-600 text-sm">{movie.genre}</p>
+                    <p className="text-gray-600 text-sm">{movie.year}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
       

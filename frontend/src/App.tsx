@@ -5,6 +5,7 @@ import { CartProvider } from './context/CartContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
+import AdminMoviesPage from './pages/AdminMoviesPage';
 
 // Debug component to show when no routes match
 const NotFoundDebug = () => {
@@ -39,7 +40,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   
   useEffect(() => {
     // Check if user is logged in
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const userDataStr = localStorage.getItem('userData');
     const isLoggedIn = Boolean(token && userDataStr);
     
@@ -73,7 +74,7 @@ function App() {
   
   useEffect(() => {
     // Check auth status on component mount
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const userDataStr = localStorage.getItem('userData');
     const isLoggedIn = Boolean(token && userDataStr);
     
@@ -108,6 +109,8 @@ function App() {
               <HomePage />
             </ProtectedRoute>
           } />
+
+          <Route path = '/adminMoviesPage' element ={<AdminMoviesPage />} />
           
           {/* Root path redirects to login */}
           <Route path="/" element={

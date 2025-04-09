@@ -9,6 +9,7 @@ using CineNiche.Auth.Services;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+using Mission11.API.Data;
 
 namespace CineNiche.API.Controllers
 {
@@ -20,6 +21,8 @@ namespace CineNiche.API.Controllers
         private readonly IStytchService _stytchService;
         private readonly ILogger<UserController> _logger;
         private readonly ITokenService _tokenService;
+    
+        private readonly MovieDbContext _movieContext;
 
         public UserController(
             IUserService userService, 
@@ -211,6 +214,95 @@ namespace CineNiche.API.Controllers
                 return StatusCode(500, new { message = $"An unexpected error occurred: {ex.Message}" });
             }
         }
+
+        [HttpGet("GetMovieById/{show_id}")]
+            public IActionResult GetMovieById(string show_id)
+            {
+                var movie = _movieContext.Movies.Find(show_id);
+                
+                if (movie == null)
+                {
+                    return NotFound(new { message = "Movie not found" });
+                }
+                
+                return Ok(movie);
+            }
+
+[HttpGet("Search")]
+public IActionResult SearchMovies([FromQuery] string query, int pageSize = 10, int pageNum = 1)
+{
+    if (string.IsNullOrEmpty(query))
+    {
+        return BadRequest(new { message = "Search query is required" });
+    }
+    
+    var searchQuery = query.ToLower();
+    
+    var results = _movieContext.Movies
+        .Where(m => 
+            (m.title != null && m.title.ToLower().Contains(searchQuery)) ||
+            (m.description != null && m.description.ToLower().Contains(searchQuery)) ||
+            (m.director != null && m.director.ToLower().Contains(searchQuery)) ||
+            (m.cast != null && m.cast.ToLower().Contains(searchQuery)) ||
+            (m.genres != null && m.genres.ToLower().Contains(searchQuery))
+        )
+        .Skip((pageNum - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
+        
+    var totalResults = _movieContext.Movies
+        .Count(m => 
+            (m.title != null && m.title.ToLower().Contains(searchQuery)) ||
+            (m.description != null && m.description.ToLower().Contains(searchQuery)) ||
+            (m.director != null && m.director.ToLower().Contains(searchQuery)) ||
+            (m.cast != null && m.cast.ToLower().Contains(searchQuery)) ||
+            (m.genres != null && m.genres.ToLower().Contains(searchQuery))
+        );
+    
+    return Ok(new { 
+        Movies = results,
+        TotalResults = totalResults
+    });
+}
+
+// Improve update functionality with better validation
+[HttpPut("UpdateMovie/{show_id}")]
+[Authorize(Policy = "AdminOnly")]
+public IActionResult UpdateMovie(string show_id, [FromBody] Movie updatedMovie)
+{
+    var existingMovie = _movieContext.Movies.Find(show_id);
+    if (existingMovie == null)
+    {
+        return NotFound(new { message = "Movie not found" });
+    }
+
+    try
+    {
+        // Basic fields
+        existingMovie.type = updatedMovie.type;
+        existingMovie.title = updatedMovie.title;
+        existingMovie.director = updatedMovie.director;
+        existingMovie.cast = updatedMovie.cast;
+        existingMovie.country = updatedMovie.country;
+        existingMovie.release_year = updatedMovie.release_year;
+        existingMovie.rating = updatedMovie.rating;
+        existingMovie.duration = updatedMovie.duration;
+        existingMovie.description = updatedMovie.description;
+        existingMovie.genres = updatedMovie.genres;
+
+        _movieContext.Movies.Update(existingMovie);
+        _movieContext.SaveChanges();
+
+        return Ok(new { 
+            message = "Movie updated successfully", 
+            movie = existingMovie 
+        });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = $"Error updating movie: {ex.Message}" });
+    }
+}
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]

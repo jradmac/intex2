@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
 
     if (token && userData) {
@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
         password,
       });
 
-      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('authToken', response.data.token);
 
       const userData = {
         userId: response.data.userId,
@@ -225,17 +225,6 @@ const CaptchaText = styled.p`
   color: #8c8c8c;
   font-size: 13px;
   margin-top: 20px;
-`;
-
-const Warning = styled.div`
-  background-color: #e87c03;
-  color: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  font-size: 14px;
-  margin-bottom: 20px;
-  font-weight: 500;
-  text-align: center;
 `;
 
 const ErrorMessage = styled.div`
