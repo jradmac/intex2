@@ -153,6 +153,19 @@ namespace Mission11.API.Controllers
         return Ok(result);
     }
 
+        //This is a request to get the movie details for the individual movie info page: 
+        [HttpGet("{show_id}")]
+        public IActionResult GetMovieById(string show_id)
+        {
+            var movie = _movieContext.Movies.Find(show_id);
+            if (movie == null)
+            {
+                return NotFound(new { message = "Movie not found" });
+            }
+
+            return Ok(movie);
+        }
+
         [HttpGet("GetGenres")]
         public IActionResult GetGenres()
         {
