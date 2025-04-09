@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import AdminMoviesPage from './pages/AdminMoviesPage';
 import MovieDetailPage from './pages/MovieDetailPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 // Debug component to show when no routes match
 const NotFoundDebug = () => {
@@ -92,6 +93,9 @@ function App() {
             }
           />
           <Route path="/adminMoviesPage" element={<AdminMoviesPage />} />
+
+          {/*Route for privacy policy page*/}
+          <Route path='/privacy' element={<PrivacyPage />} />
 
           {/* Root path redirects to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
