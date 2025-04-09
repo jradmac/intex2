@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Mission11.API.Data;
 using CineNiche.API.Models;
 using Microsoft.AspNetCore.Authorization;
+using FuzzySharp;
 
 namespace Mission11.API.Controllers
 {
@@ -16,43 +17,85 @@ namespace Mission11.API.Controllers
             _movieContext = temp;
         }
 
-        [HttpGet("GetMovies")]
-        public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery = "", [FromQuery] List<string>? genres = null)
+    [HttpGet("GetMovies")]
+    public IActionResult Get(int pageSize = 10, int pageNum = 1, string? searchQuery = "", [FromQuery] List<string>? genres = null)
+    {
+        var allMovies = _movieContext.Movies.ToList();
+
+        IEnumerable<Movie> filteredMovies = allMovies;
+
+        // 🎯 Genre filter
+        if (genres != null && genres.Any())
         {
-            var query = _movieContext.Movies.AsQueryable();
+            filteredMovies = filteredMovies.Where(m =>
+                !string.IsNullOrEmpty(m.genres) &&
+                genres.Any(g => m.genres.Contains(g, StringComparison.OrdinalIgnoreCase))
+            );
+        }
 
-            // 🔍 Search filter
-            if (!string.IsNullOrWhiteSpace(searchQuery))
-            {
-                var lowered = searchQuery.ToLower();
-                query = query.Where(m =>
-                    (m.title != null && m.title.ToLower().Contains(lowered)) ||
-                    (m.description != null && m.description.ToLower().Contains(lowered)) ||
-                    (m.cast != null && m.cast.ToLower().Contains(lowered))
-                );
-            }
+        // 🔍 Fuzzy Search Matching
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var searchLower = searchQuery.ToLower();
 
-            // 🎯 Genre filter
-            if (genres != null && genres.Any())
-            {
-                query = query.Where(m => genres.Any(g => !string.IsNullOrEmpty(m.genres) && m.genres.Contains(g)));
-            }
+            var scored = filteredMovies
+                .Select(movie =>
+                {
+                    string title = movie.title?.ToLower() ?? "";
+                    string desc = movie.description?.ToLower() ?? "";
+                    string cast = movie.cast?.ToLower() ?? "";
 
-            var totalNumMovies = query.Count();
+                    int ratioScore = Fuzz.Ratio(searchLower, title);
+                    int partialScore = Fuzz.PartialRatio(searchLower, title);
+                    int descScore = Fuzz.PartialRatio(searchLower, desc);
+                    int castScore = Fuzz.PartialRatio(searchLower, cast);
 
-            var pagedMovies = query
-                .Skip((pageNum - 1) * pageSize)
-                .Take(pageSize)
+                    // 🪄 Custom prefix bonus
+                    int prefixBonus = 0;
+                    if (title.StartsWith(searchLower)) prefixBonus += 30;
+                    else if (title.Length >= 5 && searchLower.Length >= 3 &&
+                            title.Substring(0, Math.Min(5, title.Length)).StartsWith(searchLower.Substring(0, 3)))
+                    {
+                        prefixBonus += 15;
+                    }
+
+                    int finalScore = Math.Max(ratioScore, partialScore);
+                    finalScore = Math.Max(finalScore, Math.Max(descScore, castScore));
+                    finalScore += prefixBonus;
+
+                    return new
+                    {
+                        Movie = movie,
+                        Score = finalScore
+                    };
+                })
+                .OrderByDescending(x => x.Score)
                 .ToList();
 
-            var result = new
-            {
-                Movies = pagedMovies,
-                TotalNumMovies = totalNumMovies
-            };
 
-            return Ok(result);
+            // Always return at least one full page (even if low similarity)
+            filteredMovies = scored
+                .Where(x => x.Score > 40) // minimum match threshold
+                .DefaultIfEmpty(scored.First()) // fallback to best match
+                .Select(x => x.Movie);
         }
+
+        var totalNumMovies = filteredMovies.Count();
+
+        var pagedMovies = filteredMovies
+            .Skip((pageNum - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var result = new
+        {
+            Movies = pagedMovies,
+            TotalNumMovies = totalNumMovies
+        };
+
+        return Ok(result);
+    }
+
 
         [HttpGet("GetGenres")]
         public IActionResult GetGenres()
