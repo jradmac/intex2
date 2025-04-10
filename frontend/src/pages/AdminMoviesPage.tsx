@@ -5,7 +5,7 @@ import Pagination from "../components/Pagination";
 import EditMovieForm from "../components/EditMovieForm";
 import NewMovieForm from "../components/NewMovieForm";
 import AdminSearchBar from "../components/AdminSearchBar";
-import { FaEye, FaEdit, FaTrash } from "react-icons/fa"; // Icons for actions
+import { FaEdit, FaTrash } from "react-icons/fa"; // Icons for actions
 
 type AdminSearchFilters = {
   title: string;
