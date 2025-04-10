@@ -4,18 +4,9 @@ import { fetchMovies } from '../api/MovieAPI';
 import { Movie } from '../types/Movie';
 import MovieDetailsModal from './MovieDetailsModal';
 
-const COMMON_GENRES = [
-  { display: 'All Genres', value: 'all' },
-  { display: 'Action', value: 'action' },
-  { display: 'Comedy', value: 'comedy' },
-  { display: 'Drama', value: 'drama' },
-  { display: 'Thriller', value: 'thriller' },
-  { display: 'Horror', value: 'horror' },
-  { display: 'Romance', value: 'romance' },
-  { display: 'Animation', value: 'animation' },
-  { display: 'Adventure', value: 'adventure' },
-  { display: 'Sci-Fi', value: 'sci-fi' },
-  { display: 'Documentary', value: 'documentary' }
+const POPULAR_GENRES = [
+  'Action', 'Adventure', "Children", "Comedies", "Documentaries", "Dramas",
+  "Fantasy", "Horror Movies", "Kids' TV", "Musicals", "Reality TV"
 ];
 
 interface Props {
@@ -24,37 +15,55 @@ interface Props {
 
 const SearchOverlay: React.FC<Props> = ({ onClose }) => {
   const [query, setQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('all');
+  const [genres, setGenres] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [results, setResults] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/Movie/GetGenres');
+        const data = await res.json();
+        const filtered = data.filter((g: string) => POPULAR_GENRES.includes(g));
+        setGenres(filtered);
+      } catch (err) {
+        console.error('Failed to load genres', err);
+      }
+    };
+    fetchGenres();
+  }, []);
+
   const handleSearch = async () => {
     try {
       setLoading(true);
-      const genresToSend = selectedGenre === 'all' ? [] : [selectedGenre];
-      const data = await fetchMovies(50, 1, genresToSend, query);
+      const data = await fetchMovies(50, 1, selectedGenres, query);
       setResults(data.movies);
       if (resultsRef.current) resultsRef.current.scrollTop = 0;
-    } catch (error) {
-      console.error('Search failed:', error);
+    } catch (err) {
+      console.error('Search failed:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    handleSearch();
+  }, [selectedGenres]);
 
   const handleClickMovie = (id: string) => {
     const movie = results.find(m => m.show_id === id);
     if (movie) setSelectedMovie(movie);
   };
 
-  useEffect(() => {
-    if (query) handleSearch();
-  }, [selectedGenre]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleSearch();
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev =>
+      prev.includes(genre)
+        ? prev.filter(g => g !== genre)
+        : [...prev, genre]
+    );
   };
 
   return (
@@ -62,59 +71,43 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
       <LeftPanel>
         <BackButton onClick={onClose}>← Back</BackButton>
         <SearchInput
-          type="text"
           placeholder="Search for a movie..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <SearchBtn onClick={handleSearch}>Search</SearchBtn>
 
-        <FilterLabel>Filter by Genre:</FilterLabel>
-        <GenreSelect value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
-          {COMMON_GENRES.map(genre => (
-            <option key={genre.value} value={genre.value}>
-              {genre.display}
-            </option>
+        <FilterLabel>Popular Genres</FilterLabel>
+        <GenresWrapper>
+          {genres.map((genre) => (
+            <GenreButton
+              key={genre}
+              onMouseDown={() => toggleGenre(genre)}
+              $active={selectedGenres.includes(genre)}
+            >
+              {genre}
+            </GenreButton>
           ))}
-        </GenreSelect>
+        </GenresWrapper>
       </LeftPanel>
 
       <RightPanel ref={resultsRef}>
         {loading ? (
-          <LoadingMessage>Searching movies...</LoadingMessage>
+          <LoadingText>Loading...</LoadingText>
         ) : results.length > 0 ? (
-          <>
-            <ResultsHeader>
-              <ResultsCount>{results.length} results found</ResultsCount>
-            </ResultsHeader>
-            <ResultsGrid>
-              {results.map((movie) => (
-                <MovieCard key={movie.show_id} onClick={() => handleClickMovie(movie.show_id)}>
-                  {movie.posterUrl ? (
-                    <MoviePoster 
-                      src={movie.posterUrl} 
-                      alt={`${movie.title} poster`}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = '/placeholder-poster.jpg';
-                      }}
-                    />
-                  ) : (
-                    <PosterStub>
-                      <PosterTitle>{movie.title}</PosterTitle>
-                    </PosterStub>
-                  )}
-                  <Title>{movie.title}</Title>
-                  <Meta>{movie.release_year} • {movie.rating}</Meta>
-                  {movie.genres && <GenreText>{movie.genres}</GenreText>}
-                </MovieCard>
-              ))}
-            </ResultsGrid>
-          </>
+          <ResultsGrid>
+            {results.map((movie) => (
+              <MovieCard key={movie.show_id} onClick={() => handleClickMovie(movie.show_id)}>
+                <MoviePoster src={movie.posterUrl || '/placeholder-poster.jpg'} />
+                <MovieTitle>{movie.title}</MovieTitle>
+                <MovieMeta>{movie.release_year} • {movie.rating}</MovieMeta>
+              </MovieCard>
+            ))}
+          </ResultsGrid>
         ) : (
           <EmptyText>
-            {query ? 'No movies found. Try different search terms or genre.' : 'Start typing to search for movies...'}
+            {query ? 'No results found.' : 'Start typing to search.'}
           </EmptyText>
         )}
       </RightPanel>
@@ -122,22 +115,12 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
       {selectedMovie && (
         <MovieDetailsModal
           movie={{
-            show_id: selectedMovie.show_id,
-            title: selectedMovie.title || '',
-            type: selectedMovie.type || '',
-            posterUrl: selectedMovie.posterUrl,
-            director: selectedMovie.director,
-            cast: selectedMovie.cast,
-            description: selectedMovie.description,
-            rating: selectedMovie.rating,
-            duration: selectedMovie.duration,
-            releaseYear: selectedMovie.release_year,
-            country: selectedMovie.country,
-            genre: selectedMovie.genres || '',
+            ...selectedMovie,
             recommendation_type: 'content',
             demographic_segment: '',
             gender: '',
             age_group: '',
+            genre: selectedMovie.genres || '',
             created_at: new Date().toISOString(),
           }}
           onClose={() => setSelectedMovie(null)}
@@ -157,228 +140,97 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
               genres: m.genre,
             })
           }
-          
-  />
-)}
-
+        />
+      )}
     </Overlay>
   );
 };
 
 export default SearchOverlay;
 
-// Original styled components...
+// ===== Styled Components =====
 
 const Overlay = styled.div`
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #141414;
-  color: white;
-  display: flex;
-  z-index: 9999;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: #141414; display: flex; z-index: 9999;
 `;
 
 const LeftPanel = styled.div`
-  width: 30%;
-  padding: 40px 30px;
-  background: #1a1a1a;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  width: 30%; padding: 40px 30px; background: #1a1a1a;
+  display: flex; flex-direction: column; gap: 20px;
   border-right: 1px solid #333;
 `;
 
 const RightPanel = styled.div`
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
+  flex: 1; padding: 40px; overflow-y: auto;
 `;
 
 const BackButton = styled.button`
-  background: none;
-  border: none;
-  color: #ccc;
-  font-size: 1rem;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover {
-    color: white;
-  }
+  background: none; border: none; color: #ccc;
+  font-size: 1rem; cursor: pointer;
+  &:hover { color: white; }
 `;
 
 const SearchInput = styled.input`
-  padding: 10px;
-  font-size: 1rem;
-  background: #222;
-  color: white;
-  border: 1px solid #444;
-  border-radius: 4px;
+  padding: 10px; font-size: 1rem;
+  background: #222; color: white;
+  border: 1px solid #444; border-radius: 4px;
 `;
 
 const SearchBtn = styled.button`
-  background: #e50914;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
+  background: #e50914; color: white;
+  border: none; padding: 10px;
+  border-radius: 4px; font-weight: bold; cursor: pointer;
+  &:hover { background: #b20710; }
+`;
 
-  &:hover {
-    background: #b20710;
-  }
+const FilterLabel = styled.div`
+  color: #ccc; font-size: 0.9rem;
+`;
+
+const GenresWrapper = styled.div`
+  display: flex; flex-wrap: wrap; gap: 8px;
+`;
+
+const GenreButton = styled.button<{ $active: boolean }>`
+  background: ${({ $active }) => ($active ? '#e50914' : '#333')};
+  color: white;
+  border: 1px solid #444;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  &:hover { background: #b20710; }
+  &:focus { outline: none; }
 `;
 
 const ResultsGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: flex; flex-wrap: wrap; gap: 20px;
 `;
 
 const MovieCard = styled.div`
-  width: 160px;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.85;
-  }
-`;
-
-const PosterStub = styled.div`
-  width: 100%;
-  height: 240px;
-  background: #333;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-`;
-
-const PosterTitle = styled.div`
-  color: #666;
-  text-align: center;
-  font-size: 0.9rem;
+  width: 160px; cursor: pointer;
+  &:hover { opacity: 0.85; }
 `;
 
 const MoviePoster = styled.img`
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
+  width: 100%; height: 240px; object-fit: cover;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 `;
 
-const Title = styled.h4`
-  font-size: 1rem;
-  margin: 8px 0 4px;
-  color: #fff;
+const MovieTitle = styled.div`
+  font-size: 1rem; color: #fff; margin-top: 8px;
 `;
 
-const Meta = styled.p`
-  font-size: 0.875rem;
-  color: #aaa;
-  margin: 0;
+const MovieMeta = styled.div`
+  font-size: 0.8rem; color: #aaa;
 `;
 
-const EmptyText = styled.p`
-  color: #666;
-  font-size: 1rem;
+const LoadingText = styled.div`
+  color: #aaa; text-align: center; padding: 20px;
 `;
 
-const FilterLabel = styled.label`
-  margin-top: 10px;
-  color: #aaa;
-  font-size: 0.9rem;
-`;
-
-const GenreSelect = styled.select`
-  padding: 8px;
-  background: #222;
-  color: white;
-  border: 1px solid #444;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  
-  &:focus {
-    outline: none;
-    border-color: #e50914;
-  }
-`;
-
-const ResultsHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-`;
-
-const ResultsCount = styled.div`
-  color: #aaa;
-  font-size: 0.9rem;
-`;
-
-const FilterTag = styled.div`
-  background-color: #e50914;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  display: inline-block;
-`;
-
-const GenreText = styled.div`
-  font-size: 0.8rem;
-  color: #aaa;
-  margin-top: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const LoadingMessage = styled.div`
-  color: #aaa;
-  text-align: center;
-  padding: 20px;
-`;
-
-// Debug components
-const DebugPanel = styled.div`
-  margin-top: 20px;
-  background: #333;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid #555;
-`;
-
-const DebugTitle = styled.h4`
-  color: #e50914;
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
-`;
-
-const DebugText = styled.div`
-  color: #aaa;
-  font-size: 0.8rem;
-  margin-bottom: 10px;
-`;
-
-const DebugButton = styled.button`
-  background: #444;
-  color: white;
-  border: none;
-  padding: 5px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  
-  &:hover {
-    background: #555;
-  }
+const EmptyText = styled.div`
+  color: #888; text-align: center; padding: 20px;
 `;
