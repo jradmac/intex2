@@ -115,12 +115,22 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
       {selectedMovie && (
         <MovieDetailsModal
           movie={{
-            ...selectedMovie,
+            show_id: selectedMovie.show_id,
+            title: selectedMovie.title || '',
+            type: selectedMovie.type || '',
+            posterUrl: selectedMovie.posterUrl,
+            director: selectedMovie.director,
+            cast: selectedMovie.cast,
+            description: selectedMovie.description,
+            rating: selectedMovie.rating,
+            duration: selectedMovie.duration,
+            releaseYear: selectedMovie.release_year ?? 0, // ✅ convert snake_case to camelCase
+            country: selectedMovie.country,
+            genre: selectedMovie.genres || '',
             recommendation_type: 'content',
             demographic_segment: '',
             gender: '',
             age_group: '',
-            genre: selectedMovie.genres || '',
             created_at: new Date().toISOString(),
           }}
           onClose={() => setSelectedMovie(null)}
@@ -135,7 +145,7 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
               description: m.description,
               rating: m.rating,
               duration: m.duration,
-              release_year: m.releaseYear,
+              release_year: m.releaseYear ?? 0,
               country: m.country,
               genres: m.genre,
             })

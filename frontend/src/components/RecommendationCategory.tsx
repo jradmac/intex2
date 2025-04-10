@@ -133,12 +133,6 @@ const MovieCarousel = styled.div`
   -ms-overflow-style: none; /* IE and Edge */
 `;
 
-const MovieGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-`;
-
 const MovieCard = styled.div`
   flex: 0 0 200px;
   background-color: #222;
