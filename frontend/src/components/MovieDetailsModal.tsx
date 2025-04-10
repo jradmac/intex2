@@ -51,8 +51,23 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose, o
   const releaseYear = movie.releaseYear || 0;
   const country = movie.country || 'Unknown origin';
 
-  // Handle cast list - split by commas if available
-  const castList = cast.split(',').map(actor => actor.trim()).filter(actor => actor);
+  // Handle cast list - process every two words as a full name
+  const castList = typeof cast === 'string' 
+    ? cast.split(' ')
+        .filter(word => word.trim())
+        .reduce((acc: string[], word, index, array) => {
+          if (index % 2 === 0) {
+            // If this is the last word and odd number of words total, add it alone
+            if (index === array.length - 1) {
+              acc.push(word);
+            } else {
+              // Otherwise combine with next word
+              acc.push(`${word} ${array[index + 1]}`);
+            }
+          }
+          return acc;
+        }, [])
+    : [];
 
   // Convert Movie to MovieRecommendation for similar movies when clicked
   const handleSimilarMovieClick = (similarMovie: Movie) => {
@@ -147,11 +162,13 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose, o
               {castList.length > 0 && (
                 <InfoBlock>
                   <InfoLabel>Cast:</InfoLabel>
-                  <CastGrid>
+                  <CastContainer>
                     {castList.map((actor, index) => (
-                      <CastMember key={index}>{actor}</CastMember>
+                      <ActorBox key={index}>
+                        {actor}
+                      </ActorBox>
                     ))}
-                  </CastGrid>
+                  </CastContainer>
                 </InfoBlock>
               )}
             </InfoSection>
@@ -322,6 +339,11 @@ const MoviePosterTitle = styled.span`
 
 const InfoSection = styled.div`
   flex: 1;
+  padding-left: 0;
+  
+  @media (min-width: 768px) {
+    padding-left: 5px;
+  }
 `;
 
 const InfoBlock = styled.div`
@@ -333,30 +355,42 @@ const InfoLabel = styled.div`
   color: #aaa;
   margin-bottom: 5px;
   font-size: 0.9rem;
+  text-align: left;
 `;
 
 const InfoText = styled.div`
   color: white;
+  text-align: left;
 `;
 
 const Description = styled.div`
   color: white;
   line-height: 1.5;
+  text-align: left;
+  margin-left: 0;
 `;
 
-const CastGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  margin-top: 5px;
+const CastContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 15px;
 `;
 
-const CastMember = styled.div`
+const ActorBox = styled.div`
   background-color: #333;
-  padding: 8px 12px;
-  border-radius: 4px;
+  padding: 10px 15px;
+  border-radius: 6px;
   font-size: 0.9rem;
   color: white;
+  border: 1px solid #444;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, background-color 0.2s;
+  
+  &:hover {
+    background-color: #444;
+    transform: translateY(-2px);
+  }
 `;
 
 interface RecommendationBadgeProps {
@@ -421,7 +455,7 @@ const SimilarMoviesScroll = styled.div`
   overflow-x: auto;
   padding-bottom: 10px;
   margin: 0 -20px;
-  padding: 0 20px;
+  padding: 0 20px 10px 20px;
   position: relative;
   
   /* Gradient on the right side to indicate more content */
@@ -431,9 +465,10 @@ const SimilarMoviesScroll = styled.div`
     top: 0;
     right: 0;
     height: 100%;
-    width: 40px;
+    width: 60px;
     background: linear-gradient(to right, rgba(24, 24, 24, 0), rgba(24, 24, 24, 1));
     pointer-events: none;
+    z-index: 1;
   }
   
   /* Hide scrollbar but keep functionality */
@@ -460,6 +495,8 @@ const SimilarMovieCard = styled.div`
   margin-right: 15px;
   cursor: pointer;
   transition: transform 0.2s;
+  position: relative;
+  z-index: 2;
   
   &:hover {
     transform: scale(1.05);

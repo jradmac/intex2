@@ -118,7 +118,6 @@ const HomePage: React.FC = () => {
             <HeroDescription>
               Discover your next favorite films based on your preferences and similar viewers.
             </HeroDescription>
-            <PlayButton onClick={() => navigate('/profile')}>Update Profile</PlayButton>
           </HeroContent>
         </HeroSection>
 
@@ -281,7 +280,7 @@ const HeroSection = styled.section`
   height: 80vh;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 0 60px;
   width: 100%;
   box-sizing: border-box;
@@ -289,6 +288,12 @@ const HeroSection = styled.section`
 
 const HeroContent = styled.div`
   max-width: 600px;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 30px;
+  border-radius: 8px;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 `;
 
 const HeroTitle = styled.h2`
@@ -300,8 +305,6 @@ const HeroTitle = styled.h2`
 const HeroDescription = styled.p`
   font-size: 1rem;
   margin-bottom: 20px;
-  line-height: 1.5;
-  color: white;
 `;
 
 const PlayButton = styled.button`
