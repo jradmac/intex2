@@ -10,8 +10,11 @@ namespace Mission11.API.Data
         
         public DbSet<Movie> Movies { get; set; }
         
-        // Add the new DbSet for MovieRecommendations
+        // Add the DbSet for MovieRecommendations
         public DbSet<MovieRecommendation> MovieRecommendations { get; set; }
+        
+        // Add the DbSet for SimilarMovies
+        public DbSet<SimilarMovie> SimilarMovies { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -28,6 +31,13 @@ namespace Mission11.API.Data
                 // Match column names exactly, especially for created-at with hyphen
                 entity.Property(e => e.created_at)
                       .HasColumnName("created_at");
+            });
+            
+            // Configure SimilarMovie entity
+            modelBuilder.Entity<SimilarMovie>(entity =>
+            {
+                entity.ToTable("similarMovies");
+                entity.HasKey(e => e.id);
             });
             
             // Configure Movie entity to use the correct table name

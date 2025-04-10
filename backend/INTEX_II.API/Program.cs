@@ -79,6 +79,8 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 // Register User service
 builder.Services.AddScoped<IUserService, UserService>();
 
+builder.Services.AddScoped<ISimilarMovieService, SimilarMovieService>();
+
 // Register authentication middleware
 builder.Services.AddAuthentication(options =>
 {
