@@ -8,6 +8,7 @@ using CineNiche.API.Services;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
+using CineNiche.Auth.Services;
 
 namespace CineNiche.API.Controllers
 {
