@@ -33,7 +33,6 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ Infinite loop fix
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
@@ -94,14 +93,20 @@ const LoginPage: React.FC = () => {
     <>
       <GlobalStyle />
       <BackgroundWrapper>
-      <WelcomeBar>Welcome to CineNiche!</WelcomeBar>
         <Overlay />
         <LogoWrapper onClick={() => navigate('/')}>
           <LogoImg src={logo} alt="CineNiche Logo" />
         </LogoWrapper>
         <FormWrapper onSubmit={handleLogin} method="POST">
+          <MessageBlock>
+            <MainText>Welcome to CineNiche!</MainText>
+            <SubText>Create an account to get access to over 8,000 movies and TV shows today!</SubText>
+          </MessageBlock>
+
           <Title>Sign In</Title>
+
           {error && <ErrorMessage>{error}</ErrorMessage>}
+
           <Input
             type="email"
             placeholder="Email Address"
@@ -186,9 +191,25 @@ const FormWrapper = styled.form`
   border-radius: 5px;
 `;
 
+const MessageBlock = styled.div`
+  margin-bottom: 28px;
+`;
+
+const MainText = styled.div`
+  font-size: 32px;
+  font-weight: 700;
+  color: #141414;
+`;
+
+const SubText = styled.div`
+  font-size: 1.10rem;
+  color: #555;
+  margin-top: 4px;
+`;
+
 const Title = styled.h1`
   color: #000;
-  font-size: 32px;
+  font-size: 27px;
   font-weight: bold;
   margin-bottom: 28px;
 `;
@@ -322,18 +343,3 @@ const LogoImg = styled.img`
     width: 100px;
   }
 `;
-const WelcomeBar = styled.div`
-  position: absolute;
-  top: 0;
-  width: 100%;
-  background-color: #f3ede5;
-  color: #141414;
-  text-align: center;
-  font-weight: bold;
-  padding: 10px 0;
-  z-index: 3;
-  font-size: 1rem;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid #ccc;
-`;
-
