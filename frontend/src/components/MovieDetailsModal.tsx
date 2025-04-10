@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { MovieRecommendation } from '../api/RecommendationAPI';
 import { Movie } from '../types/Movie';
 import { getSimilarMovies } from '../api/MovieAPI';
+import StarRating from './StarRating';
 
 interface MovieDetailsModalProps {
   movie: MovieRecommendation | null;
@@ -140,6 +141,8 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose, o
                 <InfoLabel>Description:</InfoLabel>
                 <Description>{description}</Description>
               </InfoBlock>
+
+              <StarRating showId={movie.show_id} />
               
               {castList.length > 0 && (
                 <InfoBlock>
