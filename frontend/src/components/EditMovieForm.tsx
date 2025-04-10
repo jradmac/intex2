@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Movie } from "../types/Movie";
 import { updateMovie } from "../api/MovieAPI";
-// import "./GenreDropdown.css";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 interface EditMovieFormProps {
   movie: Movie;
@@ -67,86 +67,103 @@ const EditMovieForm = ({ movie, onSuccess, onCancel }: EditMovieFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Edit Movie</h2>
+    <div className="card shadow-sm p-4 mt-4 mb-5">
+      <h4 className="mb-3">Edit Movie</h4>
+      <form onSubmit={handleSubmit} className="row g-3">
+        {[
+          { label: "Title", name: "title" },
+          { label: "Type", name: "type" },
+          { label: "Director", name: "director" },
+          { label: "Cast", name: "cast" },
+          { label: "Country", name: "country" },
+          { label: "Release Year", name: "release_year", type: "number" },
+          { label: "Rating", name: "rating" },
+          { label: "Duration", name: "duration" },
+        ].map(({ label, name, type }) => (
+          <div className="col-md-6" key={name}>
+            <label className="form-label">{label}</label>
+            <input
+              type={type || "text"}
+              name={name}
+              value={(formData as any)[name] || ""}
+              onChange={handleChange}
+              className="form-control"
+            />
+          </div>
+        ))}
 
-      <label>Title:
-        <input type="text" name="title" value={formData.title || ''} onChange={handleChange} />
-      </label>
+        {/* Description */}
+        <div className="col-12">
+          <label className="form-label">Description</label>
+          <textarea
+            name="description"
+            value={formData.description || ""}
+            onChange={handleChange}
+            className="form-control"
+            rows={3}
+          />
+        </div>
 
-      <label>Type:
-        <input type="text" name="type" value={formData.type || ''} onChange={handleChange} />
-      </label>
-
-      <label>Director:
-        <input type="text" name="director" value={formData.director || ''} onChange={handleChange} />
-      </label>
-
-      <label>Cast:
-        <input type="text" name="cast" value={formData.cast || ''} onChange={handleChange} />
-      </label>
-
-      <label>Country:
-        <input type="text" name="country" value={formData.country || ''} onChange={handleChange} />
-      </label>
-
-      <label>Release Year:
-        <input type="number" name="release_year" value={formData.release_year || ''} onChange={handleChange} />
-      </label>
-
-      <label>Rating:
-        <input type="text" name="rating" value={formData.rating || ''} onChange={handleChange} />
-      </label>
-
-      <label>Duration:
-        <input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} />
-      </label>
-
-      <label>Description:
-        <textarea name="description" value={formData.description || ''} onChange={handleChange} />
-      </label>
-
-      <div className="genre-dropdown-container">
-        <label>Genres:</label>
-        <div className="genre-dropdown">
-          <button
-            type="button"
-            className="genre-dropdown-toggle"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          >
-            {formData.genres || "Select genres..."}
-          </button>
+        {/* Genre Dropdown */}
+        <div className="col-12">
+          <label className="form-label">Genres</label>
+          <div className="mb-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              {isDropdownOpen ? "Hide Genres" : "Select Genres"}{" "}
+              {isDropdownOpen ? <FaChevronUp /> : <FaChevronDown />}
+            </button>
+          </div>
 
           {isDropdownOpen && (
-            <div className="genre-dropdown-menu">
-              {genreOptions.map((genre) => (
-                <label key={genre} className="genre-option">
-                  <input
-                    type="checkbox"
-                    checked={(formData.genres || "").split(',').map(g => g.trim()).includes(genre)}
-                    onChange={() => handleGenreToggle(genre)}
-                  />
-                  {genre}
-                </label>
-              ))}
+            <div className="border p-3 rounded bg-light mb-2">
+              <div className="d-flex flex-wrap gap-2">
+                {genreOptions.map((genre) => (
+                  <button
+                    key={genre}
+                    type="button"
+                    onClick={() => handleGenreToggle(genre)}
+                    className={`badge rounded-pill px-3 py-2 border ${
+                      (formData.genres || "").split(',').map(g => g.trim()).includes(genre)
+                        ? 'bg-primary text-white'
+                        : 'bg-light text-dark'
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
 
-              <div className="genre-add">
+              <div className="mt-3 d-flex gap-2 align-items-center">
                 <input
                   type="text"
+                  className="form-control form-control-sm"
                   placeholder="Add new genre"
                   value={newGenre}
                   onChange={(e) => setNewGenre(e.target.value)}
                 />
-                <button type="button" onClick={handleAddNewGenre}>Add</button>
+                <button type="button" className="btn btn-sm btn-secondary" onClick={handleAddNewGenre}>
+                  Add
+                </button>
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      <button type="submit">Update Movie</button>
-      <button type="button" onClick={onCancel}>Cancel</button>
-    </form>
+        {/* Buttons */}
+        <div className="col-12 d-flex justify-content-end gap-2">
+          <button type="submit" className="btn btn-success">
+            Update Movie
+          </button>
+          <button type="button" className="btn btn-outline-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 
