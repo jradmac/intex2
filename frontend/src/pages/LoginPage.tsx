@@ -94,6 +94,7 @@ const LoginPage: React.FC = () => {
     <>
       <GlobalStyle />
       <BackgroundWrapper>
+      <WelcomeBar>Welcome to CineNiche!</WelcomeBar>
         <Overlay />
         <LogoWrapper onClick={() => navigate('/')}>
           <LogoImg src={logo} alt="CineNiche Logo" />
@@ -321,3 +322,18 @@ const LogoImg = styled.img`
     width: 100px;
   }
 `;
+const WelcomeBar = styled.div`
+  position: absolute;
+  top: 0;
+  width: 100%;
+  background-color: #f3ede5;
+  color: #141414;
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 0;
+  z-index: 3;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #ccc;
+`;
+
