@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 import { fetchMovies } from '../api/MovieAPI';
 import { Movie } from '../types/Movie';
+import MovieDetailsModal from './MovieDetailsModal';
 
-// Common movie genres with API mappings
 const COMMON_GENRES = [
   { display: 'All Genres', value: 'all' },
   { display: 'Action', value: 'action' },
@@ -19,121 +18,25 @@ const COMMON_GENRES = [
   { display: 'Documentary', value: 'documentary' }
 ];
 
-// Mapping of additional terms that might appear in genre data
-const GENRE_MAPPINGS: Record<string, string[]> = {
-  'sci-fi': ['science fiction', 'scifi', 'science-fiction'],
-  'action': ['action & adventure', 'action-adventure', 'action and adventure'],
-  'comedy': ['romantic comedy', 'comedy-drama', 'sitcom'],
-  'thriller': ['crime thriller', 'psychological thriller', 'mystery'],
-  'horror': ['supernatural', 'slasher', 'monster'],
-  'documentary': ['docuseries', 'documentary series', 'docu']
-};
-
 interface Props {
   onClose: () => void;
 }
-
-// Direct fetch function for debugging
-const directFetchWithLogging = async (url: string) => {
-  console.log('Making direct fetch to URL:', url);
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error('Direct fetch failed with status:', response.status);
-      return null;
-    }
-    const data = await response.json();
-    console.log('Direct fetch succeeded with data count:', data.movies?.length || 0);
-    return data;
-  } catch (error) {
-    console.error('Direct fetch error:', error);
-    return null;
-  }
-};
 
 const SearchOverlay: React.FC<Props> = ({ onClose }) => {
   const [query, setQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [results, setResults] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
-  const [debugMode, setDebugMode] = useState(false); // Toggle for debug features
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
-  const navigate = useNavigate();
-
-  // Function to test different API formats
-  const testMultipleGenreFetches = async () => {
-    if (!debugMode) return;
-    
-    setLoading(true);
-    console.group('🔍 API FORMAT TESTS');
-    
-    try {
-      // Test 1: Standard API call through fetchMovies
-      console.log('TEST 1: Using fetchMovies API');
-      const standardResult = await fetchMovies(50, 1, [selectedGenre], query);
-      console.log('Results:', standardResult.movies.length);
-      
-      // Test 2: Direct fetch to API with alternative format
-      const baseUrl = 'http://localhost:5000/api/Movie/GetMovies';
-      const testUrl1 = `${baseUrl}?pageSize=50&pageNum=1&searchQuery=${encodeURIComponent(query)}&genre=${encodeURIComponent(selectedGenre)}`;
-      console.log('TEST 2: Using "genre=" parameter');
-      await directFetchWithLogging(testUrl1);
-      
-      // Test 3: Direct fetch with comma format
-      const testUrl2 = `${baseUrl}?pageSize=50&pageNum=1&searchQuery=${encodeURIComponent(query)}&genres=${encodeURIComponent(selectedGenre)}`;
-      console.log('TEST 3: Using "genres=" parameter');
-      await directFetchWithLogging(testUrl2);
-      
-      // Test 4: Try with filter=genre
-      const testUrl3 = `${baseUrl}?pageSize=50&pageNum=1&searchQuery=${encodeURIComponent(query)}&filter=genre:${encodeURIComponent(selectedGenre)}`;
-      console.log('TEST 4: Using "filter=genre:" parameter');
-      await directFetchWithLogging(testUrl3);
-      
-      // Test 5: Try with filterBy
-      const testUrl4 = `${baseUrl}?pageSize=50&pageNum=1&searchQuery=${encodeURIComponent(query)}&filterBy=genre&filterValue=${encodeURIComponent(selectedGenre)}`;
-      console.log('TEST 5: Using "filterBy=genre&filterValue=" parameter');
-      await directFetchWithLogging(testUrl4);
-      
-    } catch (error) {
-      console.error('Error in test fetch:', error);
-    } finally {
-      console.groupEnd();
-      setLoading(false);
-    }
-  };
 
   const handleSearch = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Starting search with query:', query, 'and genre:', selectedGenre);
-      
-      // Log the URL that will be constructed
-      const API_URL = "http://localhost:5000/api/Movie";
       const genresToSend = selectedGenre === 'all' ? [] : [selectedGenre];
-      const genreParams = genresToSend
-        .map((genre) => `genres=${encodeURIComponent(genre)}`)
-        .join('&');
-      
-      const url = `${API_URL}/GetMovies?pageSize=50&pageNum=1&searchQuery=${encodeURIComponent(query)}${genresToSend.length ? `&${genreParams}` : ""}`;
-      console.log('🌐 API URL that will be called:', url);
-      
-      // Standard approach with our API
       const data = await fetchMovies(50, 1, genresToSend, query);
-      console.log('📊 API response data:', data);
-      console.log('📈 Total movies returned:', data.movies.length);
-      
-      // If we're in debug mode, run our tests
-      if (debugMode && selectedGenre !== 'all') {
-        await testMultipleGenreFetches();
-      }
-      
-      // Proceed with normal flow
       setResults(data.movies);
-
-      // Reset scroll to top
-      if (resultsRef.current) {
-        resultsRef.current.scrollTop = 0;
-      }
+      if (resultsRef.current) resultsRef.current.scrollTop = 0;
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
@@ -141,43 +44,18 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
     }
   };
 
-  const handleGenreChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const genreValue = e.target.value;
-    console.log('Genre changed to:', genreValue);
-    setSelectedGenre(genreValue);
+  const handleClickMovie = (id: string) => {
+    const movie = results.find(m => m.show_id === id);
+    if (movie) setSelectedMovie(movie);
   };
 
-  // Use effect to handle search when genre changes
   useEffect(() => {
-    if (query) {
-      console.log('useEffect triggering search after genre change');
-      handleSearch();
-    }
+    if (query) handleSearch();
   }, [selectedGenre]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+    if (e.key === 'Enter') handleSearch();
   };
-
-  const handleClickMovie = (id: string) => {
-    onClose(); // Close overlay
-    navigate(`/movies/${id}`);
-  };
-
-  // Toggle debug mode with Ctrl+Shift+D
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-        setDebugMode(prev => !prev);
-        console.log('Debug mode toggled:', !debugMode);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [debugMode]);
 
   return (
     <Overlay>
@@ -191,24 +69,17 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
           onKeyDown={handleKeyDown}
         />
         <SearchBtn onClick={handleSearch}>Search</SearchBtn>
-        
+
         <FilterLabel>Filter by Genre:</FilterLabel>
-        <GenreSelect value={selectedGenre} onChange={handleGenreChange}>
+        <GenreSelect value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
           {COMMON_GENRES.map(genre => (
             <option key={genre.value} value={genre.value}>
               {genre.display}
             </option>
           ))}
         </GenreSelect>
-        
-        {debugMode && (
-          <DebugPanel>
-            <DebugTitle>Debug Mode Active</DebugTitle>
-            <DebugText>Current genre: {selectedGenre}</DebugText>
-            <DebugButton onClick={testMultipleGenreFetches}>Test API Formats</DebugButton>
-          </DebugPanel>
-        )}
       </LeftPanel>
+
       <RightPanel ref={resultsRef}>
         {loading ? (
           <LoadingMessage>Searching movies...</LoadingMessage>
@@ -216,11 +87,6 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
           <>
             <ResultsHeader>
               <ResultsCount>{results.length} results found</ResultsCount>
-              {selectedGenre !== 'all' && (
-                <FilterTag>
-                  Genre: {COMMON_GENRES.find(g => g.value === selectedGenre)?.display || selectedGenre}
-                </FilterTag>
-              )}
             </ResultsHeader>
             <ResultsGrid>
               {results.map((movie) => (
@@ -230,8 +96,8 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
                       src={movie.posterUrl} 
                       alt={`${movie.title} poster`}
                       onError={(e) => {
-                        e.currentTarget.onerror = null; // Prevent infinite error loops
-                        e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/placeholder-poster.jpg';
                       }}
                     />
                   ) : (
@@ -240,10 +106,8 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
                     </PosterStub>
                   )}
                   <Title>{movie.title}</Title>
-                  <Meta>
-                    {movie.release_year} • {movie.rating}
-                    {movie.genres && <GenreText>{movie.genres}</GenreText>}
-                  </Meta>
+                  <Meta>{movie.release_year} • {movie.rating}</Meta>
+                  {movie.genres && <GenreText>{movie.genres}</GenreText>}
                 </MovieCard>
               ))}
             </ResultsGrid>
@@ -254,6 +118,49 @@ const SearchOverlay: React.FC<Props> = ({ onClose }) => {
           </EmptyText>
         )}
       </RightPanel>
+
+      {selectedMovie && (
+        <MovieDetailsModal
+          movie={{
+            show_id: selectedMovie.show_id,
+            title: selectedMovie.title || '',
+            type: selectedMovie.type || '',
+            posterUrl: selectedMovie.posterUrl,
+            director: selectedMovie.director,
+            cast: selectedMovie.cast,
+            description: selectedMovie.description,
+            rating: selectedMovie.rating,
+            duration: selectedMovie.duration,
+            releaseYear: selectedMovie.release_year,
+            country: selectedMovie.country,
+            genre: selectedMovie.genres || '',
+            recommendation_type: 'content',
+            demographic_segment: '',
+            gender: '',
+            age_group: '',
+            created_at: new Date().toISOString(),
+          }}
+          onClose={() => setSelectedMovie(null)}
+          onSelectMovie={(m) =>
+            setSelectedMovie({
+              show_id: m.show_id,
+              title: m.title,
+              type: m.type,
+              posterUrl: m.posterUrl,
+              director: m.director,
+              cast: m.cast,
+              description: m.description,
+              rating: m.rating,
+              duration: m.duration,
+              release_year: m.releaseYear,
+              country: m.country,
+              genres: m.genre,
+            })
+          }
+          
+  />
+)}
+
     </Overlay>
   );
 };
