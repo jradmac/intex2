@@ -15,7 +15,6 @@ const RecommendationCategory: React.FC<RecommendationCategoryProps> = ({
   recommendations, 
   loading 
 }) => {
-  const [view, setView] = useState<'carousel' | 'grid'>('carousel');
   const [selectedMovie, setSelectedMovie] = useState<MovieRecommendation | null>(null);
 
   const handleMovieClick = (movie: MovieRecommendation) => {
@@ -49,100 +48,44 @@ const RecommendationCategory: React.FC<RecommendationCategoryProps> = ({
     <CategoryWrapper>
       <CategoryHeader>
         <CategoryTitle>{title}</CategoryTitle>
-        
-        <ViewToggleContainer>
-          <ViewToggleButton 
-            onClick={() => setView('carousel')}
-            $isActive={view === 'carousel'}
-          >
-            Carousel
-          </ViewToggleButton>
-          <ViewToggleButton 
-            onClick={() => setView('grid')}
-            $isActive={view === 'grid'}
-          >
-            Grid
-          </ViewToggleButton>
-        </ViewToggleContainer>
       </CategoryHeader>
       
-      {view === 'carousel' ? (
-        // Carousel view
-        <MovieCarousel>
-          {recommendations.map((movie, index) => (
-            <MovieCard 
-              key={`${movie.show_id}-${index}`}
-              onClick={() => handleMovieClick(movie)}
-            >
-              <MoviePoster $hasImage={!!movie.posterUrl}>
-                {movie.posterUrl ? (
-                  <PosterImage 
-                    src={movie.posterUrl} 
-                    alt={movie.title} 
-                    onError={(e) => {
-                      e.currentTarget.onerror = null; // Prevent infinite loops
-                      e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder image
-                    }}
-                  />
-                ) : (
-                  <MoviePosterTitle>{movie.title}</MoviePosterTitle>
-                )}
-              </MoviePoster>
-              <MovieInfo>
-                <MovieTitle>{movie.title}</MovieTitle>
-                <MovieDetails>
-                  {movie.type} • {movie.releaseYear || ''}
-                </MovieDetails>
-                <RecTypeTag 
-                  $isCollaborative={movie.recommendation_type === "collaborative"}
-                >
-                  {movie.recommendation_type === "collaborative" 
-                    ? "Recommended for you" 
-                    : "Similar content"}
-                </RecTypeTag>
-              </MovieInfo>
-            </MovieCard>
-          ))}
-        </MovieCarousel>
-      ) : (
-        // Grid view
-        <MovieGrid>
-          {recommendations.map((movie, index) => (
-            <MovieCard 
-              key={`${movie.show_id}-${index}`}
-              onClick={() => handleMovieClick(movie)}
-            >
-              <MoviePoster $hasImage={!!movie.posterUrl}>
-                {movie.posterUrl ? (
-                  <PosterImage 
-                    src={movie.posterUrl} 
-                    alt={movie.title} 
-                    onError={(e) => {
-                      e.currentTarget.onerror = null; // Prevent infinite loops
-                      e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder image
-                    }}
-                  />
-                ) : (
-                  <MoviePosterTitle>{movie.title}</MoviePosterTitle>
-                )}
-              </MoviePoster>
-              <MovieInfo>
-                <MovieTitle>{movie.title}</MovieTitle>
-                <MovieDetails>
-                  {movie.type} • {movie.releaseYear || ''}
-                </MovieDetails>
-                <RecTypeTag 
-                  $isCollaborative={movie.recommendation_type === "collaborative"}
-                >
-                  {movie.recommendation_type === "collaborative" 
-                    ? "Recommended for you" 
-                    : "Similar content"}
-                </RecTypeTag>
-              </MovieInfo>
-            </MovieCard>
-          ))}
-        </MovieGrid>
-      )}
+      <MovieCarousel>
+        {recommendations.map((movie, index) => (
+          <MovieCard 
+            key={`${movie.show_id}-${index}`}
+            onClick={() => handleMovieClick(movie)}
+          >
+            <MoviePoster $hasImage={!!movie.posterUrl}>
+              {movie.posterUrl ? (
+                <PosterImage 
+                  src={movie.posterUrl} 
+                  alt={movie.title} 
+                  onError={(e) => {
+                    e.currentTarget.onerror = null; // Prevent infinite loops
+                    e.currentTarget.src = '/placeholder-poster.jpg'; // Use a placeholder image
+                  }}
+                />
+              ) : (
+                <MoviePosterTitle>{movie.title}</MoviePosterTitle>
+              )}
+            </MoviePoster>
+            <MovieInfo>
+              <MovieTitle>{movie.title}</MovieTitle>
+              <MovieDetails>
+                {movie.type} • {movie.releaseYear || ''}
+              </MovieDetails>
+              <RecTypeTag 
+                $isCollaborative={movie.recommendation_type === "collaborative"}
+              >
+                {movie.recommendation_type === "collaborative" 
+                  ? "Recommended for you" 
+                  : "Similar content"}
+              </RecTypeTag>
+            </MovieInfo>
+          </MovieCard>
+        ))}
+      </MovieCarousel>
       
       {/* Movie Details Modal */}
       {selectedMovie && (
@@ -174,30 +117,6 @@ const CategoryTitle = styled.h3`
   font-size: 1.5rem;
   margin: 0;
   color: #fff;
-`;
-
-const ViewToggleContainer = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-interface ViewToggleButtonProps {
-  $isActive: boolean;
-}
-
-const ViewToggleButton = styled.button<ViewToggleButtonProps>`
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  background-color: ${props => props.$isActive ? '#e50914' : '#333'};
-  color: white;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: ${props => props.$isActive ? '#b20710' : '#444'};
-  }
 `;
 
 const MovieCarousel = styled.div`
