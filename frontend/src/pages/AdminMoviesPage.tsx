@@ -5,6 +5,7 @@ import Pagination from "../components/Pagination";
 import EditMovieForm from "../components/EditMovieForm";
 import NewMovieForm from "../components/NewMovieForm";
 import AdminSearchBar from "../components/AdminSearchBar";
+import { FaEye, FaEdit, FaTrash } from "react-icons/fa"; // Icons for actions
 
 type AdminSearchFilters = {
   title: string;
@@ -15,7 +16,7 @@ const AdminMoviesPage = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [pageNum, setPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [showForm, setShowForm] = useState(false);
@@ -23,7 +24,7 @@ const AdminMoviesPage = () => {
 
   const [filters, setFilters] = useState<AdminSearchFilters>({
     title: "",
-    genres: []
+    genres: [],
   });
 
   useEffect(() => {
@@ -43,36 +44,52 @@ const AdminMoviesPage = () => {
   }, [pageSize, pageNum, filters]);
 
   const handleDelete = async (showId: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this movie?");
-    if (!confirmDelete) return;
-
+    if (!window.confirm("Are you sure you want to delete this movie?")) return;
     try {
       await deleteMovie(showId);
-      setMovies(movies.filter((m) => m.show_id !== showId));
+      setMovies((prev) => prev.filter((m) => m.show_id !== showId));
     } catch (error) {
-      alert("Failed to delete movie, try again");
+      alert("Failed to delete movie, try again.");
     }
   };
 
-  if (loading) return <p>Loading movies...</p>;
-  if (error) return <p className="text-red-500">Error: {error}</p>;
+  if (loading) return <p className="mt-5 text-center text-muted">Loading movies...</p>;
+  if (error) return <p className="text-danger">Error: {error}</p>;
 
   return (
-    <div>
-      <h1>Admin - Movies</h1>
+    <div className="p-4">
+      {/* Header Bar */}
+      <div className="bg-dark text-white d-flex justify-content-between align-items-center p-3 rounded shadow-sm">
+        <div>
+          <h4 className="m-0">Admin Dashboard</h4>
+          
+        </div>
+        <div>
+          <span className="me-3">Admin</span>
+          <i className="bi bi-person-circle fs-4"></i>
+        </div>
+      </div>
 
-      <AdminSearchBar
-        onSearch={(newFilters) => {
-          setFilters(newFilters);
-          setPageNum(1);
-        }}
-      />
+      {/* Search and Add Button */}
+      <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
+      
+        <AdminSearchBar
+          onSearch={(newFilters) => {
+            setFilters(newFilters);
+            setPageNum(1);
+          }}
+        />
+      </div>
 
+      {/* Add New Button */}
       {!showForm && (
-        <button className="btn btn-primary mb-3" onClick={() => setShowForm(true)}>
-          Add New Movie
-        </button>
+        <div className="d-flex justify-content-end mb-4">
+          <button className="btn btn-success shadow-sm" onClick={() => setShowForm(true)}>
+            + Add Movie
+          </button>
+        </div>
       )}
+      
 
       {showForm && (
         <NewMovieForm
@@ -95,60 +112,71 @@ const AdminMoviesPage = () => {
         />
       )}
 
-      <table className="table table-bordered table-striped">
-        <thead className="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Type</th>
-            <th>Director</th>
-            <th>Cast</th>
-            <th>Year</th>
-            <th>Rating</th>
-            <th>Genres</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {movies.map((m) => (
-            <tr key={m.show_id}>
-              <td>{m.show_id}</td>
-              <td>{m.title}</td>
-              <td>{m.type}</td>
-              <td>{m.director}</td>
-              <td>{m.cast}</td>
-              <td>{m.release_year}</td>
-              <td>{m.rating}</td>
-              <td>{m.genres}</td>
-              <td>
-                <button
-                  className="btn btn-primary btn-sm w-100 mb-1"
-                  onClick={() => setEditingMovie(m)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn btn-danger btn-sm w-100"
-                  onClick={() => handleDelete(m.show_id)}
-                >
-                  Delete
-                </button>
-              </td>
+      {/* Table */}
+      <div className="table-responsive">
+        <table className="table table-hover table-bordered align-middle mt-2 shadow-sm">
+          <thead className="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Director</th>
+              <th>Cast</th>
+              <th>Year</th>
+              <th>Rating</th>
+              <th>Genres</th>
+              <th className="text-center">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {movies.map((m) => (
+              <tr key={m.show_id} className="align-middle">
+                <td>{m.show_id}</td>
+                <td>{m.title}</td>
+                <td>{m.type}</td>
+                <td>{m.director}</td>
+                <td>{m.cast}</td>
+                <td>{m.release_year}</td>
+                <td>{m.rating}</td>
+                <td>{m.genres}</td>
+                <td className="text-center">
+                  <button
+                    className="btn btn-sm btn-light me-2 border"
+                    title="Edit"
+                    onClick={() => setEditingMovie(m)}
+                  >
+                    <FaEdit className="text-primary" />
+                  </button>
+                  <button
+                    className="btn btn-sm btn-light border"
+                    title="Delete"
+                    onClick={() => handleDelete(m.show_id)}
+                  >
+                    <FaTrash className="text-danger" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <Pagination
-        currentPage={pageNum}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        onPageChange={setPageNum}
-        onPageSizeChange={(newSize) => {
-          setPageSize(newSize);
-          setPageNum(1);
-        }}
-      />
+      {/* Pagination */}
+      <div className="d-flex justify-content-between align-items-center mt-3">
+        <Pagination
+          currentPage={pageNum}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          onPageChange={setPageNum}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPageNum(1);
+          }}
+        />
+        <span className="text-muted">
+          Showing {movies.length} of {pageSize * totalPages} results
+        </span>
+      </div>
     </div>
   );
 };

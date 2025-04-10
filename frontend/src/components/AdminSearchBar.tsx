@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 type SearchFilters = {
   title: string;
@@ -29,70 +30,83 @@ const AdminSearchBar: React.FC<Props> = ({ onSearch }) => {
     fetchGenres();
   }, []);
 
-  const toggleSelection = (value: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
-    if (list.includes(value)) {
-      setList(list.filter(v => v !== value));
-    } else {
-      setList([...list, value]);
-    }
+  const toggleSelection = (value: string) => {
+    setSelectedGenres((prev) =>
+      prev.includes(value) ? prev.filter((g) => g !== value) : [...prev, value]
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch({
-      title: title.trim(),
-      genres: selectedGenres
-    });
+    onSearch({ title: title.trim(), genres: selectedGenres });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 items-end mb-6 border p-4 rounded shadow">
-      {/* Title */}
-      <div className="flex flex-col">
-        <label className="text-sm font-medium">Title</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="border rounded px-2 py-1 w-40"
-        />
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white shadow-sm border border-gray-200 rounded p-4 w-100 d-flex flex-column gap-3"
+    >
+      {/* Title Filter */}
+      <div className="d-flex flex-column flex-md-row gap-3 align-items-center">
+        <div className="flex-grow-1">
+          <label className="form-label fw-medium mb-1">Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="form-control"
+            placeholder="Search by title..."
+          />
+        </div>
+
+        {/* Genre Toggle Button */}
+        <div className="d-flex flex-column">
+          <label className="form-label fw-medium mb-1">Genres</label>
+          <button
+            type="button"
+            onClick={() => setShowGenres((prev) => !prev)}
+            className="btn btn-outline-primary btn-sm d-flex align-items-center"
+          >
+            {showGenres ? (
+              <>
+                Hide Genres <FaChevronUp className="ms-2" />
+              </>
+            ) : (
+              <>
+                Show Genres <FaChevronDown className="ms-2" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-2 mt-md-4">
+          <button type="submit" className="btn btn-success">
+            Search
+          </button>
+        </div>
       </div>
 
-      {/* Genre Toggle */}
-      <div className="flex flex-col">
-        <label className="text-sm font-medium mb-1">Genres</label>
-        <button
-          type="button"
-          onClick={() => setShowGenres(prev => !prev)}
-          className="text-blue-600 text-sm underline"
-        >
-          {showGenres ? 'Hide Genre Options ▲' : 'Show Genre Options ▼'}
-        </button>
-
-        {showGenres && (
-          <div className="flex flex-wrap gap-1 mt-2 max-w-lg">
-            {availableGenres.map((genre) => (
-              <button
-                key={genre}
-                type="button"
-                onClick={() => toggleSelection(genre, selectedGenres, setSelectedGenres)}
-                className={`px-2 py-1 text-xs rounded-full border ${
-                  selectedGenres.includes(genre) ? 'bg-blue-600 text-white' : 'bg-gray-100'
-                }`}
-              >
-                {genre}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Search Button */}
-      <div>
-        <button type="submit" className="bg-blue-700 text-white px-4 py-2 rounded">
-          Search
-        </button>
-      </div>
+      {/* Genre Selection */}
+      {showGenres && (
+        <div className="d-flex flex-wrap gap-2 mt-3">
+          {availableGenres.map((genre) => (
+            <button
+              key={genre}
+              type="button"
+              onClick={() => toggleSelection(genre)}
+              className={`badge rounded-pill px-3 py-2 border ${
+                selectedGenres.includes(genre)
+                  ? 'bg-primary text-white'
+                  : 'bg-light text-dark'
+              }`}
+              style={{ cursor: 'pointer' }}
+            >
+              {genre}
+            </button>
+          ))}
+        </div>
+      )}
     </form>
   );
 };
